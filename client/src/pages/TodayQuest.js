@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { Link } from 'react-router-dom';
 import {
   Container,
   Card,
@@ -25,13 +26,14 @@ import {
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder"
 import FavoriteIcon from "@mui/icons-material/Favorite"
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline"
-import SubmissionCard from './SubmissionCard';
+import SubmissionCard from '../components/SubmissionCard';
 
 const TodayQuest = ({ currentUser }) => {
   const [quest, setQuest] = useState(null)
   const [submissions, setSubmissions] = useState([])
   const [loading, setLoading] = useState(true)
   const [timeLeft, setTimeLeft] = useState("")
+  const [progressValue, setProgressValue] = useState(100);
   const [openModal, setOpenModal] = useState(false)
   const [selectedSubmission, setSelectedSubmission] = useState(null)
   const [comments, setComments] = useState([])
@@ -39,6 +41,8 @@ const TodayQuest = ({ currentUser }) => {
   const [likedSubmissions, setLikedSubmissions] = useState(new Set())
   const [imageModalOpen, setImageModalOpen] = useState(false)
   const [selectedImageForModal, setSelectedImageForModal] = useState(null)
+  const [latestAuthorComment, setLatestAuthorComment] = useState(null);
+
 
   useEffect(() => {
     fetchTodayQuest()
@@ -57,11 +61,16 @@ const TodayQuest = ({ currentUser }) => {
       const hours = Math.floor(diff / (1000 * 60 * 60))
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
 
-      setTimeLeft(`${hours}시간 ${minutes}분 남음`)
+      setTimeLeft(`${hours.toString().padStart(2,'0')}:${minutes.toString().padStart(2,'0')} 남음`)
+
+      const totalDayMillis = 24 * 60 * 60 * 1000;
+      const elapsedDayMillis = now.getTime() - new Date(now).setHours(0,0,0,0); // 오늘 00:00부터 경과한 시간
+      const progress = (elapsedDayMillis / totalDayMillis) * 100;
+      setProgressValue(100 - progress); // 남은 시간을 기준으로 100에서 차감
     }
 
     updateTimer()
-    const interval = setInterval(updateTimer, 60000)
+    const interval = setInterval(updateTimer, 60000) // 랜더링 1분마다
 
     return () => clearInterval(interval)
   }, [quest])
@@ -97,7 +106,20 @@ const TodayQuest = ({ currentUser }) => {
 
       const data = await response.json()
       if (response.ok) {
-        setComments(data)
+        let commentsList = [...data]; 
+        const postAuthorId = submission.user_id; 
+
+        const authorComments = commentsList.filter(c => c.user_id === postAuthorId);
+        let foundLatestAuthorComment = null;
+        if (authorComments.length > 0) {
+          foundLatestAuthorComment = authorComments.reduce((latest, current) => {
+            return new Date(current.created_at) > new Date(latest.created_at) ? current : latest;
+          }, authorComments[0]);
+        }
+        setLatestAuthorComment(foundLatestAuthorComment); 
+
+        commentsList.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+        setComments(commentsList); 
       }
     } catch (err) {
       console.error("댓글 로드 실패:", err)
@@ -130,8 +152,16 @@ const TodayQuest = ({ currentUser }) => {
 
       const data = await response.json()
       if (response.ok) {
-        setComments([...comments, data])
-        setNewComment("")
+        const updatedComments = [...comments, data].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+        setComments(updatedComments);
+        setNewComment("");
+
+        const postAuthorId = selectedSubmission.user_id;
+        if (data.user_id === postAuthorId) {
+          if (!latestAuthorComment || new Date(data.created_at) > new Date(latestAuthorComment.created_at)) {
+            setLatestAuthorComment(data); 
+          }
+        }
       }
     } catch (err) {
       console.error("댓글 작성 실패:", err)
@@ -245,7 +275,12 @@ const TodayQuest = ({ currentUser }) => {
     return (
       <Card key={submission.id} sx={{ marginBottom: 2 }}>
         <CardHeader
-          avatar={<Avatar src={submission.userProfileImage} alt={submission.nickname} />}
+          avatar={
+            <Avatar src={`http://localhost:3010${submission.userProfileImage}`} 
+            alt={submission.nickname} 
+            onError={(e) => { e.target.src ='https://via.placeholder.com/40?text=N/A'; }} 
+            />
+          }  
           title={<Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>{submission.nickname}</Typography>}
           subheader={
             <>
@@ -296,15 +331,16 @@ const TodayQuest = ({ currentUser }) => {
                 >
                   <CardMedia
                     component="img"
-                    image={imgUrl}
+                    image={`http://localhost:3010${imgUrl}`} 
                     alt={`제출물 이미지 ${index + 1}`}
+                    onError={(e) => { e.target.src = 'https://via.placeholder.com/300?text=Image+Not+Found'; }}
                     sx={{
                       width: '100%',
                       height: '100%',
                       objectFit: 'contain',
                       cursor: 'pointer',
                     }}
-                    onClick={() => handleOpenImageModal(imgUrl)}
+                    onClick={() => handleOpenImageModal(`http://localhost:3010${imgUrl}`)}
                   />
                 </Box>
               ))}
@@ -400,8 +436,18 @@ const TodayQuest = ({ currentUser }) => {
             <Typography variant="caption">{timeLeft}</Typography>
             <LinearProgress
               variant="determinate"
-              value={75}
-              sx={{ marginTop: 1, backgroundColor: "rgba(255,255,255,0.3)" }}
+              value={progressValue}
+              sx={{ 
+                marginTop: 1, 
+                height: 10,
+                borderRadius: 5,
+                backgroundColor: "rgba(255,255,255,0.3)",
+                "& .MuiLinearProgress-bar": {
+                  backgroundColor: progressValue > 50 ? "#4ade80" 
+                                    : progressValue > 20 ? "#facc15" 
+                                    : "#f87171" 
+                }
+              }}
             />
           </Box>
         </CardContent>
@@ -435,8 +481,10 @@ const TodayQuest = ({ currentUser }) => {
               {selectedSubmission.imageUrl && (
                 <Box
                   component="img"
-                  src={selectedSubmission.imageUrl}
+                  src={`http://localhost:3010${selectedSubmission.imageUrl}`}
                   alt="제출물"
+                  onError={(e) => { e.target.src = 'https://via.placeholder.com/300?text=Image+Not+Found'; }} 
+
                   sx={{ width: "100%", marginBottom: 2, borderRadius: 1 }}
                 />
               )}
@@ -449,17 +497,70 @@ const TodayQuest = ({ currentUser }) => {
               </Typography>
 
               <Box sx={{ maxHeight: 300, overflowY: "auto", marginBottom: 2 }}>
+                {latestAuthorComment && (
+                  <Box sx={{ borderBottom: '1px dashed #ccc', pb: 1, mb: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'flex-start', p: 1, borderRadius: 1, backgroundColor: '#E0F2F7', border: '1px solid #B2EBF2' }}>
+                      <Avatar src={latestAuthorComment.profile_image_url} alt={latestAuthorComment.nickname} sx={{ width: 30, height: 30, marginRight: 1 }} />
+                      <Box sx={{ flexGrow: 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                            {latestAuthorComment.nickname}
+                          </Typography>
+                          <Typography variant="caption" sx={{ backgroundColor: '#00BCD4', color: 'white', px: 0.5, borderRadius: 1, fontSize: '0.6rem' }}>
+                            작성자
+                          </Typography>
+                          <Typography variant="caption" color="textSecondary" sx={{ ml: 'auto' }}>
+                            {new Date(latestAuthorComment.created_at).toLocaleString('ko-KR', {
+                              year: 'numeric', month: 'numeric', day: 'numeric',
+                              hour: '2-digit', minute: '2-digit'
+                            })}
+                          </Typography>
+                        </Box>
+                        <Typography variant="body2">{latestAuthorComment.content}</Typography>
+                      </Box>
+                    </Box>
+                  </Box>
+                )}
+
                 {comments.length === 0 ? (
                   <Typography variant="body2" color="textSecondary">
                     아직 댓글이 없습니다
                   </Typography>
                 ) : (
-                  comments.map((comment) => (
-                    <Box key={comment.id} sx={{ marginBottom: 1 }}>
-                      <Typography variant="subtitle2">{comment.nickname}</Typography>
-                      <Typography variant="body2">{comment.content}</Typography>
-                    </Box>
-                  ))
+                  comments.map((comment) => {
+                    const isAuthor = comment.user_id === selectedSubmission.user_id;
+                    return (
+                      <Box key={comment.id} sx={{ display: 'flex', alignItems: 'flex-start', marginBottom: 2, p: 1, borderRadius: 1, backgroundColor: isAuthor ?'#F3F4F6' : 'transparent' }}>
+                        <Link to={`/profile/${comment.user_id}`} onClick={handleCloseModal}>
+                            <Avatar
+                              src={`http://localhost:3010${comment.profile_image_url}`}
+                              alt={comment.nickname}
+                              sx={{ width: 30, height: 30, marginRight: 1 }}
+                              onError={(e) => { e.target.src = 'https://via.placeholder.com/40?text=N/A'; }}
+                            />
+                        </Link>
+                        <Box sx={{ flexGrow: 1 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                              {comment.nickname}
+                            </Typography>
+                            {isAuthor && (
+                              <Typography variant="caption" sx={{ backgroundColor: '#6366F1', color: 'white', px: 0.5, borderRadius: 1, fontSize: '0.6rem' }}>
+                                작성자
+                              </Typography>
+                            )}
+                            <Typography variant="caption" color="textSecondary" sx={{ ml: 'auto' }}>
+                              {new Date(comment.created_at).toLocaleString('ko-KR', {
+                                year: 'numeric', month: 'numeric', day: 'numeric',
+                                hour: '2-digit', minute: '2-digit'
+                              })}
+                            </Typography>
+                          </Box>
+                          <Typography variant="body2">{comment.content}</Typography>
+                        </Box>
+                      </Box>
+                    );
+                  })
                 )}
               </Box>
 

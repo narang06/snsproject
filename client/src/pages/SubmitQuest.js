@@ -4,8 +4,11 @@ import { useRef, useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { Container, Box, TextField, Button, Typography, Paper, Alert, CircularProgress, IconButton } from "@mui/material"
 import CloseIcon from '@mui/icons-material/Close';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import DoneAllIcon from '@mui/icons-material/DoneAll';
 
-const SubmitQuest = ({ currentUser }) => {
+
+const SubmitQuest = ({ currentUser, setNavValue }) => {
   const [content, setContent] = useState("");
   const imageRef = useRef()
   const navigate = useNavigate()
@@ -104,6 +107,7 @@ const SubmitQuest = ({ currentUser }) => {
       }
 
       navigate("/today-quest");
+      setNavValue(1);
     } catch (err) {
       setError("서버 연결 오류");
     } finally {
@@ -129,16 +133,25 @@ const SubmitQuest = ({ currentUser }) => {
 
   if (hasSubmitted) {
     return (
-      <Container maxWidth="sm" sx={{ paddingTop: 2 }}>
-        <Alert severity="info">오늘은 이미 퀘스트를 제출하셨습니다. 내일 다시 도전해주세요!</Alert>
-        <Button
-          fullWidth
-          variant="contained"
-          sx={{ marginTop: 2, backgroundColor: "#6366F1" }}
-          onClick={() => navigate("/today-quest")}
-        >
-          오늘의 퀘스트 보기
-        </Button>
+      <Container maxWidth="sm" sx={{ paddingY: 4, display: 'flex', justifyContent: 'center' }}>
+        <Paper sx={{ padding: 4, textAlign: 'center', width: '100%', maxWidth: 400, borderRadius: 2, boxShadow: 3 }}>
+          <Typography variant="h5" sx={{ fontWeight: 'bold', marginBottom: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+            <CheckCircleOutlineIcon color="success" />
+            오늘 퀘스트 제출 완료!
+          </Typography>
+          <Typography variant="body1" sx={{ color: 'text.secondary', marginBottom: 3 }}>
+            오늘은 이미 퀘스트를 제출하셨습니다.<br />
+            내일 다시 도전해보세요!
+          </Typography>
+          <Button
+            fullWidth
+            variant="contained"
+            sx={{ backgroundColor: '#6366F1', '&:hover': { backgroundColor: '#4f46e5' } }}
+            onClick={() => navigate("/today-quest")}
+          >
+            오늘의 퀘스트 확인
+          </Button>
+        </Paper>
       </Container>
     )
   }

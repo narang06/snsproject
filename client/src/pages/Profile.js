@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { useParams, useNavigate } from "react-router-dom"
+import { useParams, useNavigate, Link } from "react-router-dom"
 import {
   Container,
   Card,
@@ -28,18 +28,16 @@ import FavoriteIcon from "@mui/icons-material/Favorite"
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline"
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete';
-import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos';
-import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import CloseIcon from '@mui/icons-material/Close';
+import SubmissionCard from '../components/SubmissionCard';
+import UserListDialog from '../components/UserListDialog';
 
 const Profile = ({ currentUser, onLogout }) => {
   const { userId } = useParams()
   const navigate = useNavigate()
-  const profileImageInputRef = useRef(null);
-  const editImageInputRef = useRef(null);
-  const scrollContainerRef = useRef(null);
-  const [user, setUser] = useState(null)
-  const [currentImageIndex, setCurrentImageIndex] = useState(0); 
+  const profileImageInputRef = useRef(null)
+  const editImageInputRef = useRef(null)
+  const [user, setUser] = useState(null) 
   const [submissions, setSubmissions] = useState([])
   const [loading, setLoading] = useState(true)
   const [isFollowing, setIsFollowing] = useState(false)
@@ -49,16 +47,21 @@ const Profile = ({ currentUser, onLogout }) => {
   const [newComment, setNewComment] = useState("")
   const [likedSubmissions, setLikedSubmissions] = useState(new Set())
   const [isEditingBio, setIsEditingBio] = useState(false);
-  const [bioInput, setBioInput] = useState(user?.bio || "");
-  const [isEditingProfileImage, setIsEditingProfileImage] = useState(false); 
-  const [profileImageFile, setProfileImageFile] = useState(null); 
-  const [profileImagePreview, setProfileImagePreview] = useState(null); 
-  const [editModalOpen, setEditModalOpen] = useState(false);
-  const [submissionToEdit, setSubmissionToEdit] = useState(null);
-  const [editedContent, setEditedContent] = useState("");
-  const [editingImages, setEditingImages] = useState([]); 
-  const [selectedImageForModal, setSelectedImageForModal] = useState(null);
-  const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [bioInput, setBioInput] = useState(user?.bio || "")
+  const [isEditingProfileImage, setIsEditingProfileImage] = useState(false);
+  const [profileImageFile, setProfileImageFile] = useState(null)
+  const [profileImagePreview, setProfileImagePreview] = useState(null)
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [submissionToEdit, setSubmissionToEdit] = useState(null)
+  const [editedContent, setEditedContent] = useState("")
+  const [editingImages, setEditingImages] = useState([])
+  const [selectedImageForModal, setSelectedImageForModal] = useState(null)
+  const [imageModalOpen, setImageModalOpen] = useState(false)
+  const [latestAuthorComment, setLatestAuthorComment] = useState(null)
+  const [isListDialogOpen, setIsListDialogOpen] = useState(false)
+  const [dialogTitle, setDialogTitle] = useState('')
+  const [userList, setUserList] = useState([])
+  const [isListLoading, setIsListLoading] = useState(false)
 
   const handleOpenEditModal = (submission) => {
     setSubmissionToEdit(submission);
@@ -310,12 +313,16 @@ const Profile = ({ currentUser, onLogout }) => {
         headers: { Authorization: `Bearer ${token}` },
       })
 
-      const data = await response.json()
-      if (response.ok) {
-        setUser(data.user)
-        setSubmissions(data.submissions)
-        setIsFollowing(data.isFollowing)
+      if (!response.ok) {
+        if (response.status === 401) {
+          onLogout(); 
+        }
+        return; 
       }
+      const data = await response.json()
+      setUser(data.user)
+      setSubmissions(data.submissions)
+      setIsFollowing(data.isFollowing)
     } catch (err) {
       console.error("프로필 로드 실패:", err)
     } finally {
@@ -336,16 +343,49 @@ const Profile = ({ currentUser, onLogout }) => {
       })
 
       if (response.ok) {
-        setIsFollowing(!isFollowing)
-        setUser({
-          ...user,
-          followerCount: isFollowing ? user.followerCount - 1 : user.followerCount + 1,
-        })
+        // 요청 성공 시, 사용자 프로필 정보를 서버에서 다시 불러옵니다.
+        fetchUserProfile();
+      } else {
+        // 요청이 실패한 경우 사용자에게 알림
+        const data = await response.json();
+        alert(data.message || "요청에 실패했습니다.");
       }
     } catch (err) {
-      console.error("팔로우 실패:", err)
+      console.error("팔로우/언팔로우 작업 오류:", err);
+      alert("서버와 통신 중 오류가 발생했습니다.");
     }
   }
+
+  const handleOpenUserList = async (type) => {
+    const title = type === 'followers' ? '팔로워' : '팔로잉';
+    setDialogTitle(title);
+    setIsListLoading(true);
+    setIsListDialogOpen(true);
+
+    try {
+        const token = localStorage.getItem("token");
+        const response = await fetch(`http://localhost:3010/follows/${type}/${userId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await response.json();
+        if (response.ok) {
+            setUserList(data);
+        } else {
+            alert(data.message || '목록을 불러오는데 실패했습니다.');
+        }
+    } catch (err) {
+        console.error(`${title} 목록 조회 오류:`, err);
+        alert('목록을 불러오는 중 오류가 발생했습니다.');
+    } finally {
+        setIsListLoading(false);
+    }
+  };
+
+  const handleCloseUserList = () => {
+      setIsListDialogOpen(false);
+      setDialogTitle('');
+      setUserList([]);
+  };
 
   const handleOpenModal = async (submission) => {
     setSelectedSubmission(submission)
@@ -359,7 +399,20 @@ const Profile = ({ currentUser, onLogout }) => {
 
       const data = await response.json()
       if (response.ok) {
-        setComments(data)
+        let commentsList = [...data]; 
+        const postAuthorId = submission.user_id; 
+
+        const authorComments = commentsList.filter(c => c.user_id === postAuthorId);
+        let foundLatestAuthorComment = null;
+        if (authorComments.length > 0) {
+          foundLatestAuthorComment = authorComments.reduce((latest, current) => {
+            return new Date(current.created_at) > new Date(latest.created_at) ? current : latest;
+          }, authorComments[0]);
+        }
+        setLatestAuthorComment(foundLatestAuthorComment); 
+
+        commentsList.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+        setComments(commentsList);
       }
     } catch (err) {
       console.error("댓글 로드 실패:", err)
@@ -392,8 +445,17 @@ const Profile = ({ currentUser, onLogout }) => {
 
       const data = await response.json()
       if (response.ok) {
-        setComments([...comments, data])
-        setNewComment("")
+        
+        const updatedComments = [...comments, data].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+        setComments(updatedComments);
+        setNewComment("");
+
+        const postAuthorId = selectedSubmission.user_id;
+        if (data.user_id === postAuthorId) {
+          if (!latestAuthorComment || new Date(data.created_at) > new Date(latestAuthorComment.created_at)) {
+            setLatestAuthorComment(data); 
+          }
+        }
       }
     } catch (err) {
       console.error("댓글 작성 실패:", err)
@@ -465,28 +527,6 @@ const Profile = ({ currentUser, onLogout }) => {
     }
   };
 
-  const handleScrollNext = (imagesLength) => {
-    if (scrollContainerRef.current) {
-      const newIndex = Math.min(currentImageIndex + 1, imagesLength - 1);
-      scrollContainerRef.current.scrollTo({
-        left: scrollContainerRef.current.offsetWidth * newIndex,
-        behavior: 'smooth'
-      });
-      setCurrentImageIndex(newIndex);
-    }
-  };
-
-  const handleScrollPrev = () => {
-    if (scrollContainerRef.current) {
-      const newIndex = Math.max(currentImageIndex - 1, 0);
-      scrollContainerRef.current.scrollTo({
-        left: scrollContainerRef.current.offsetWidth * newIndex,
-        behavior: 'smooth'
-      });
-      setCurrentImageIndex(newIndex);
-    }
-  };
-
   const handleOpenImageModal = (imageUrl) => {
     setSelectedImageForModal(imageUrl);
     setImageModalOpen(true);
@@ -520,7 +560,7 @@ const Profile = ({ currentUser, onLogout }) => {
           <Box sx={{ textAlign: "center", marginBottom: 2 }}>
             <Box sx={{ position: 'relative', width: 100, height: 100, margin: '0 auto', marginBottom: 2 }}>
               <Avatar
-                src={profileImagePreview || user.profileImage} // 미리보기 또는 현재 이미지
+                src={profileImagePreview || (user.profileImage ? `http://localhost:3010${user.profileImage}` : '')} 
                 alt={user.nickname}
                 sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
               />
@@ -619,7 +659,10 @@ const Profile = ({ currentUser, onLogout }) => {
               </Box>
             </Grid>
             <Grid item xs={4}>
-              <Box sx={{ textAlign: "center" }}>
+              <Box
+                sx={{ textAlign: "center", cursor: 'pointer' }}
+                onClick={() => handleOpenUserList('followers')}
+              >
                 <Typography variant="h6" sx={{ fontWeight: "bold" }}>
                   {user.followerCount}
                 </Typography>
@@ -627,7 +670,10 @@ const Profile = ({ currentUser, onLogout }) => {
               </Box>
             </Grid>
             <Grid item xs={4}>
-              <Box sx={{ textAlign: "center" }}>
+              <Box
+                sx={{ textAlign: "center", cursor: 'pointer' }}
+                onClick={() => handleOpenUserList('following')}
+              >
                 <Typography variant="h6" sx={{ fontWeight: "bold" }}>
                   {user.followingCount}
                 </Typography>
@@ -671,166 +717,19 @@ const Profile = ({ currentUser, onLogout }) => {
       {submissions.length === 0 ? (
         <Typography sx={{ textAlign: "center", marginTop: 4 }}>게시물이 없습니다</Typography>
       ) : (
-        submissions.map((submission) => {
-          let images = [];
-          try {
-            const parsedImages = JSON.parse(submission.image_url);
-            if (Array.isArray(parsedImages)) {
-              images = parsedImages;
-            }
-          } catch (e) {
-            if (typeof submission.image_url === 'string' && submission.image_url.startsWith('/uploads/')) {
-              images = [submission.image_url];
-            }
-          }
-
-          return (
-            <Card key={submission.id} sx={{ marginBottom: 2 }}>
-              <CardHeader
-                title={
-                  <Typography variant="h6" component="div" sx={{ marginBottom: '4px', fontWeight: 'bold' }}>
-                    {submission.questTitle}
-                  </Typography>
-                }
-                subheader={
-                  <>
-                    <Typography variant="caption" sx={{ fontSize: '0.8rem', display: 'block' }}>
-                      {new Date(submission.created_at).toLocaleDateString("ko-KR")}
-                    </Typography>
-                    <Typography variant="caption" sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>
-                      {new Date(submission.created_at).toLocaleTimeString("ko-KR")}
-                    </Typography>
-                  </>
-                }
-                action={
-                  isOwnProfile && (
-                    <>
-                      <IconButton aria-label="edit" onClick={() => handleOpenEditModal(submission)}>
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton aria-label="delete" onClick={() => handleDeleteSubmission(submission.id)}>
-                        <DeleteIcon />
-                      </IconButton>
-                    </>
-                  )
-                }
-              />
-              {images.length > 0 && (
-                <Box sx={{ position: 'relative' }}>
-                  <Box
-                    ref={scrollContainerRef}
-                    sx={{
-                      display: 'flex',
-                      overflowX: 'scroll',
-                      scrollSnapType: 'x mandatory',
-                      borderTop: 1,
-                      borderBottom: 1,
-                      borderColor: 'divider',
-                      '&::-webkit-scrollbar': { display: 'none' },
-                      '-ms-overflow-style': 'none',
-                      'scrollbar-width': 'none',
-                    }}
-                    onScroll={(e) => {
-                      const scrollLeft = e.currentTarget.scrollLeft;
-                      const width = e.currentTarget.offsetWidth;
-                      const newIndex = Math.round(scrollLeft / width);
-                      if (newIndex !== currentImageIndex) {
-                        setCurrentImageIndex(newIndex);
-                      }
-                    }}
-                  >
-                    {images.map((imgUrl, index) => (
-                      <Box
-                        key={index}
-                        sx={{
-                          minWidth: '100%',
-                          height: 300,
-                          flexShrink: 0,
-                          scrollSnapAlign: 'start',
-                          display: 'flex',
-                          justifyContent: 'center',
-                          alignItems: 'center',
-                          backgroundColor: '#f0f0f0',
-                        }}
-                      >
-                        <CardMedia
-                          component="img"
-                          image={imgUrl}
-                          alt={`게시물 이미지 ${index + 1}`}
-                          sx={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'contain',
-                            cursor: 'pointer',
-                          }}
-                          onClick={() => handleOpenImageModal(imgUrl)}
-                        />
-                      </Box>
-                    ))}
-                  </Box>
-
-                  {images.length > 1 && (
-                    <>
-                      <IconButton
-                        sx={{
-                          position: 'absolute',
-                          left: 0,
-                          top: '50%',
-                          transform: 'translateY(-50%)',
-                          backgroundColor: 'rgba(0,0,0,0.5)',
-                          color: 'white',
-                          '&:hover': { backgroundColor: 'rgba(0,0,0,0.7)' },
-                          zIndex: 1
-                        }}
-                        onClick={() => handleScrollPrev()}
-                        disabled={currentImageIndex === 0}
-                      >
-                        <ArrowBackIosIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton
-                        sx={{
-                          position: 'absolute',
-                          right: 0,
-                          top: '50%',
-                          transform: 'translateY(-50%)',
-                          backgroundColor: 'rgba(0,0,0,0.5)',
-                          color: 'white',
-                          '&:hover': { backgroundColor: 'rgba(0,0,0,0.7)' },
-                          zIndex: 1
-                        }}
-                        onClick={() => handleScrollNext(images.length)}
-                        disabled={currentImageIndex === images.length - 1}
-                      >
-                        <ArrowForwardIosIcon fontSize="small" />
-                      </IconButton>
-                    </>
-                  )}
-                </Box>
-              )}
-              <CardContent>
-                <Typography variant="body1">{submission.content}</Typography>
-              </CardContent>
-              <CardActions>
-                <Button
-                  size="small"
-                  onClick={() => handleLike(submission)}
-                  startIcon={
-                    likedSubmissions.has(submission.id) ? (
-                      <FavoriteIcon sx={{ color: "#EC4899" }} />
-                    ) : (
-                      <FavoriteBorderIcon />
-                    )
-                  }
-                >
-                  {submission.likeCount}
-                </Button>
-                <Button size="small" startIcon={<ChatBubbleOutlineIcon />} onClick={() => handleOpenModal(submission)}>
-                  {submission.commentCount}
-                </Button>
-              </CardActions>
-            </Card>
-          );
-        })
+        submissions.map((submission) => (
+          <SubmissionCard
+            key={submission.id}
+            submission={submission}
+            handleOpenModal={handleOpenModal}
+            handleOpenImageModal={handleOpenImageModal} 
+            handleLike={handleLike}                
+            likedSubmissions={likedSubmissions}       
+            currentUserId={currentUser?.userId}       
+            onDeleteSubmission={handleDeleteSubmission} 
+            onEditSubmission={handleOpenEditModal}     
+          />
+        ))
       )}
 
       <Dialog open={openModal} onClose={handleCloseModal} maxWidth="sm" fullWidth>
@@ -855,17 +754,66 @@ const Profile = ({ currentUser, onLogout }) => {
               </Typography>
 
               <Box sx={{ maxHeight: 300, overflowY: "auto", marginBottom: 2 }}>
+                {latestAuthorComment && (
+                  <Box sx={{ borderBottom: '1px dashed #ccc', pb: 1, mb: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'flex-start', p: 1, borderRadius: 1, backgroundColor: '#E0F2F7', border: '1px solid #B2EBF2' }}>
+                      <Avatar src={latestAuthorComment.profile_image_url} alt={latestAuthorComment.nickname} sx={{ width: 30, height: 30, marginRight: 1 }} />
+                      <Box sx={{ flexGrow: 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                            {latestAuthorComment.nickname}
+                          </Typography>
+                          <Typography variant="caption" sx={{ backgroundColor: '#00BCD4', color: 'white', px: 0.5, borderRadius: 1, fontSize: '0.6rem' }}>
+                            작성자
+                          </Typography>
+                          <Typography variant="caption" color="textSecondary" sx={{ ml: 'auto' }}>
+                            {new Date(latestAuthorComment.created_at).toLocaleString('ko-KR', {
+                              year: 'numeric', month: 'numeric', day: 'numeric',
+                              hour: '2-digit', minute: '2-digit'
+                            })}
+                          </Typography>
+                        </Box>
+                        <Typography variant="body2">{latestAuthorComment.content}</Typography>
+                      </Box>
+                    </Box>
+                  </Box>
+                )}
+
                 {comments.length === 0 ? (
                   <Typography variant="body2" color="textSecondary">
                     아직 댓글이 없습니다
                   </Typography>
                 ) : (
-                  comments.map((comment) => (
-                    <Box key={comment.id} sx={{ marginBottom: 1 }}>
-                      <Typography variant="subtitle2">{comment.nickname}</Typography>
-                      <Typography variant="body2">{comment.content}</Typography>
-                    </Box>
-                  ))
+                  comments.map((comment) => {
+                    // 고정된 댓글은 일반 목록에서도 렌더링
+                    const isAuthor = comment.user_id === selectedSubmission.user_id;
+                    return (
+                      <Box key={comment.id} sx={{ display: 'flex', alignItems: 'flex-start', marginBottom: 2, p: 1, borderRadius: 1, backgroundColor: isAuthor ? '#F3F4F6' : 'transparent' }}>
+                        <Link to={`/profile/${comment.user_id}`} onClick={handleCloseModal}>
+                          <Avatar src={comment.profile_image_url} alt={comment.nickname} sx={{ width: 30, height: 30, marginRight: 1 }} />
+                        </Link>
+                        <Box sx={{ flexGrow: 1 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                              {comment.nickname}
+                            </Typography>
+                            {isAuthor && (
+                              <Typography variant="caption" sx={{ backgroundColor: '#6366F1', color: 'white', px: 0.5, borderRadius: 1, fontSize: '0.6rem' }}>
+                                작성자
+                              </Typography>
+                            )}
+                            <Typography variant="caption" color="textSecondary" sx={{ ml: 'auto' }}>
+                              {new Date(comment.created_at).toLocaleString('ko-KR', {
+                                year: 'numeric', month: 'numeric', day: 'numeric',
+                                hour: '2-digit', minute: '2-digit'
+                              })}
+                            </Typography>
+                          </Box>
+                          <Typography variant="body2">{comment.content}</Typography>
+                        </Box>
+                      </Box>
+                    );
+                  })
                 )}
               </Box>
 
@@ -972,6 +920,12 @@ const Profile = ({ currentUser, onLogout }) => {
           <Button onClick={handleUpdateSubmission}>저장</Button>
         </DialogActions>
       </Dialog>
+      <UserListDialog
+        open={isListDialogOpen}
+        onClose={handleCloseUserList}
+        title={dialogTitle}
+        users={userList}
+      />
     </Container>
   )
 };

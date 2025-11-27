@@ -34,11 +34,11 @@ router.patch("/:notificationId", authMiddleware, async (req, res) => {
     const userId = req.user.userId;
 
     const [notifications] = await db.query(
-      "SELECT user_id FROM notifications WHERE id = ?",
+      "SELECT recipient_id FROM notifications WHERE id = ?",
       [notificationId]
     );
 
-    if (notifications.length === 0 || notifications[0].user_id !== userId) {
+    if (notifications.length === 0 || notifications[0].recipient_id !== userId) {
       return res.status(403).json({ message: "권한이 없습니다" });
     }
 

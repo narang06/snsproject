@@ -14,7 +14,7 @@ router.post("/", authMiddleware, async (req, res) => {
       return res.status(400).json({ message: "자신을 팔로우할 수 없습니다" })
     }
 
-    const [existingFollow] = await db.query("SELECT id FROM follows WHERE user_id = ? AND target_user_id = ?", [
+    const [existingFollow] = await db.query("SELECT * FROM follows WHERE follower_id = ? AND following_id = ?", [
       userId,
       targetUserId,
     ])
@@ -23,10 +23,10 @@ router.post("/", authMiddleware, async (req, res) => {
       return res.status(400).json({ message: "이미 팔로우했습니다" })
     }
 
-    await db.query("INSERT INTO follows (user_id, target_user_id) VALUES (?, ?)", [userId, targetUserId])
+    await db.query("INSERT INTO follows (follower_id, following_id) VALUES (?, ?)", [userId, targetUserId])
 
     // 알림 생성
-    await db.query("INSERT INTO notifications (user_id, type, from_user_id) VALUES (?, ?, ?)", [
+    await db.query("INSERT INTO notifications (recipient_id, type, sender_id) VALUES (?, ?, ?)", [
       targetUserId,
       "follow",
       userId,
@@ -45,7 +45,7 @@ router.delete("/", authMiddleware, async (req, res) => {
     const userId = req.user.userId
     const { targetUserId } = req.body
 
-    await db.query("DELETE FROM follows WHERE user_id = ? AND target_user_id = ?", [userId, targetUserId])
+    await db.query("DELETE FROM follows WHERE follower_id = ? AND following_id = ?", [userId, targetUserId])
 
     res.status(200).json({ message: "언팔로우 성공" })
   } catch (err) {
@@ -53,5 +53,45 @@ router.delete("/", authMiddleware, async (req, res) => {
     res.status(500).json({ message: "서버 오류" })
   }
 })
+
+// 특정 사용자의 팔로워 목록 조회
+router.get("/followers/:userId", authMiddleware, async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const [followers] = await db.query(
+      `SELECT u.id, u.nickname, u.nickname_tag, u.profile_image_url
+       FROM users u
+       JOIN follows f ON u.id = f.follower_id
+       WHERE f.following_id = ?`,
+      [userId]
+    );
+
+    res.status(200).json(followers);
+  } catch (err) {
+    console.error("팔로워 목록 조회 오류:", err);
+    res.status(500).json({ message: "서버 오류" });
+  }
+});
+
+// 특정 사용자의 팔로잉 목록 조회
+router.get("/following/:userId", authMiddleware, async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const [following] = await db.query(
+      `SELECT u.id, u.nickname, u.nickname_tag, u.profile_image_url
+       FROM users u
+       JOIN follows f ON u.id = f.following_id
+       WHERE f.follower_id = ?`,
+      [userId]
+    );
+
+    res.status(200).json(following);
+  } catch (err) {
+    console.error("팔로잉 목록 조회 오류:", err);
+    res.status(500).json({ message: "서버 오류" });
+  }
+});
 
 export default router

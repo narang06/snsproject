@@ -1,4 +1,5 @@
 import React, { useState, useRef } from "react";
+import { Link } from "react-router-dom";
 import {
   Card,
   CardHeader,
@@ -29,11 +30,9 @@ const SubmissionCard = ({
   onDeleteSubmission,       // 삭제 기능용 (Profile.js에서만 필요)
   onEditSubmission,         // 수정 기능용 (Profile.js에서만 필요)
 }) => {
-  // --- 이 컴포넌트만의 로컬 Ref와 상태 ---
   const scrollContainerRefLocal = useRef(null);
   const [currentImageIndexLocal, setCurrentImageIndexLocal] = useState(0);
 
-  // 이 컴포넌트만의 로컬 스크롤 핸들러
   const handleScrollNextLocal = (imagesLength) => {
     if (scrollContainerRefLocal.current) {
       const newIndex = Math.min(currentImageIndexLocal + 1, imagesLength - 1);
@@ -73,10 +72,17 @@ const SubmissionCard = ({
   return (
     <Card sx={{ marginBottom: 2 }}>
       <CardHeader
-        avatar={<Avatar src={submission.userProfileImage} alt={submission.nickname} />}
+        avatar={
+          <Link to={`/profile/${submission.user_id}`}>
+            <Avatar src={`http://localhost:3010${submission.userProfileImage}`} alt={submission.nickname} />
+          </Link>
+        }
         title={<Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>{submission.nickname}</Typography>}
         subheader={
           <>
+            <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 'medium' }}>
+              {submission.questTitle}
+            </Typography>
             <Typography variant="caption" sx={{ fontSize: '0.8rem', display: 'block' }}>
               {new Date(submission.created_at).toLocaleDateString("ko-KR")}
             </Typography>
@@ -114,8 +120,8 @@ const SubmissionCard = ({
               borderBottom: 1,
               borderColor: 'divider',
               '&::-webkit-scrollbar': { display: 'none' },
-              '-ms-overflow-style': 'none',
-              'scrollbar-width': 'none',
+              msOverflowStyle: 'none',
+              scrollbarWidth: 'none', 
             }}
             onScroll={(e) => {
               const newIndex = Math.round(e.currentTarget.scrollLeft / e.currentTarget.offsetWidth);
@@ -140,15 +146,16 @@ const SubmissionCard = ({
               >
                 <CardMedia
                   component="img"
-                  image={imgUrl}
+                  image={`http://localhost:3010${imgUrl}`} 
                   alt={`제출물 이미지 ${index + 1}`}
+                  onError={(e) => { e.target.src = 'https://via.placeholder.com/300?text=Image+Not+Found'; }}
                   sx={{
                     width: '100%',
                     height: '100%',
                     objectFit: 'contain',
                     cursor: 'pointer',
                   }}
-                  onClick={() => handleOpenImageModal(imgUrl)}
+                  onClick={() => handleOpenImageModal(`http://localhost:3010${imgUrl}`)} 
                 />
               </Box>
             ))}

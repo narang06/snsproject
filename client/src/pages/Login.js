@@ -12,7 +12,6 @@ const Login = ({ onLogin }) => {
   const [successMessage, setSuccessMessage] = useState({ message: "", type: "info" })
 
   useEffect(() => {
-    console.log("Login.js location.search:", location.search); // 디버깅용
     const searchParams = new URLSearchParams(location.search)
     const message = searchParams.get("message")
     const type = searchParams.get("type") || "info"

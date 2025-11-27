@@ -54,17 +54,19 @@ router.get("/:userId", authMiddleware, async (req, res) => {
 
     const [submissions] = await db.query(
       `SELECT s.id, s.daily_quest_id, s.user_id, s.content_text as content, s.content_image_url as image_url, s.created_at,
+              u.nickname, u.nickname_tag, u.profile_image_url as userProfileImage,
               q.title as questTitle,
               COUNT(DISTINCT l.user_id) as likeCount,
               COUNT(DISTINCT c.id) as commentCount
-       FROM submissions s
-       JOIN daily_quests dq ON s.daily_quest_id = dq.id
-       JOIN quests q ON dq.quest_id = q.id
-       LEFT JOIN likes l ON s.id = l.submission_id
-       LEFT JOIN comments c ON s.id = c.submission_id
-       WHERE s.user_id = ?
-       GROUP BY s.id
-       ORDER BY s.created_at DESC`,
+      FROM submissions s
+      JOIN users u ON s.user_id = u.id
+      JOIN daily_quests dq ON s.daily_quest_id = dq.id
+      JOIN quests q ON dq.quest_id = q.id
+      LEFT JOIN likes l ON s.id = l.submission_id
+      LEFT JOIN comments c ON s.id = c.submission_id
+      WHERE s.user_id = ?
+      GROUP BY s.id
+      ORDER BY s.created_at DESC`,
       [userId]
     );
 

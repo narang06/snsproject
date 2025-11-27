@@ -2,15 +2,32 @@ import express from "express"
 import bcrypt from "bcrypt"
 import jwt from "jsonwebtoken"
 import db from "../db.js"
+import multer from "multer"
+import path from "path" 
+import fs from "fs"     
 
 const router = express.Router()
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-in-production"
 
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = "uploads/profiles"; 
+    fs.mkdirSync(uploadDir, { recursive: true });
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  },
+});
+const upload = multer({ storage });
+
 // 회원가입
-router.post("/join", async (req, res) => {
+router.post("/join", upload.single('profileImage'), async (req, res) => {
   try {
-    const { nickname, email, password } = req.body;
+    const { nickname, email, password, bio } = req.body;
+    const profileImage = req.file ? `/uploads/profiles/${req.file.filename}` : null;
 
     if (!nickname || !email || !password) {
       return res.status(400).json({ message: "모든 필드를 입력해주세요" });
@@ -40,8 +57,8 @@ router.post("/join", async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 8);
 
     await db.query(
-      "INSERT INTO users (nickname, nickname_tag, email, password) VALUES (?, ?, ?, ?)",
-      [nickname, nicknameTag, email, hashedPassword]
+      "INSERT INTO users (nickname, nickname_tag, email, password, bio, profile_image_url) VALUES (?, ?, ?, ?, ?, ?)",
+      [nickname, nicknameTag, email, hashedPassword, bio || null, profileImage]
     );
 
     res.status(201).json({ message: "회원가입 성공" });

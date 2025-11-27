@@ -26,23 +26,58 @@ const upload = multer({ storage });
 // 피드 조회
 router.get("/feed", authMiddleware, async (req, res) => {
   try {
-    const [submissions] = await db.query(
-      `SELECT 
+    const { date, query, sort } = req.query;
+
+    let whereClause = "WHERE 1=1";
+    const queryParams = [];
+
+    // 날짜 필터링
+    if (date) {
+      whereClause += " AND DATE(s.created_at) = ?";
+      queryParams.push(date); 
+    }
+
+    // 닉네임 검색
+    if (query) {
+      whereClause += " AND u.nickname LIKE ?";
+      queryParams.push(`%${query}%`);
+    }
+
+    let orderByClause = "ORDER BY s.created_at DESC"; // 기본 정렬
+
+    // 정렬 조건
+    switch (sort) {
+      case "likes":
+        orderByClause = "ORDER BY likeCount DESC, s.created_at DESC"; // 좋아요 수가 같으면 최신순
+        break;
+      case "comments":
+        orderByClause = "ORDER BY commentCount DESC, s.created_at DESC"; // 댓글 수가 같으면 최신순
+        break;
+      case "latest":
+      default:
+        orderByClause = "ORDER BY s.created_at DESC";
+        break;
+    }
+
+    const sqlQuery = `
+      SELECT
         s.id, s.daily_quest_id, s.user_id, s.content_text as content, s.content_image_url as image_url, s.created_at,
         u.nickname, u.nickname_tag, u.profile_image_url as userProfileImage,
         q.title as questTitle,
         COUNT(DISTINCT l.user_id) as likeCount,
         COUNT(DISTINCT c.id) as commentCount
-       FROM submissions s
-       JOIN users u ON s.user_id = u.id
-       JOIN daily_quests dq ON s.daily_quest_id = dq.id
-       JOIN quests q ON dq.quest_id = q.id
-       LEFT JOIN likes l ON s.id = l.submission_id
-       LEFT JOIN comments c ON s.id = c.submission_id
-       WHERE DATE(s.created_at) = CURDATE()
-       GROUP BY s.id
-       ORDER BY s.created_at DESC`
-    );
+      FROM submissions s
+      JOIN users u ON s.user_id = u.id
+      JOIN daily_quests dq ON s.daily_quest_id = dq.id
+      JOIN quests q ON dq.quest_id = q.id
+      LEFT JOIN likes l ON s.id = l.submission_id
+      LEFT JOIN comments c ON s.id = c.submission_id
+      ${whereClause}
+      GROUP BY s.id
+      ${orderByClause}
+    `;
+
+    const [submissions] = await db.query(sqlQuery, queryParams);
 
     res.status(200).json(submissions);
   } catch (err) {

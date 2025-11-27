@@ -1,12 +1,13 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react" // useRef 추가
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from "react-router-dom"
+import { useState, useEffect, useRef } from "react" 
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom"
 import { Box, BottomNavigation, BottomNavigationAction } from "@mui/material"
 import HomeIcon from "@mui/icons-material/Home"
-import TrendingUpIcon from "@mui/icons-material/TrendingUp"
+import AssignmentIcon from "@mui/icons-material/Assignment"
 import PersonIcon from "@mui/icons-material/Person"
 import NotificationsIcon from "@mui/icons-material/Notifications"
+import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline"
 import { jwtDecode } from 'jwt-decode';
 
 import Login from "./pages/Login"
@@ -16,7 +17,6 @@ import Home from "./pages/Home"
 import TodayQuest from "./pages/TodayQuest"
 import Profile from "./pages/Profile"
 import Notifications from "./pages/Notifications"
-// import ProfileEdit from "./pages/ProfileEdit" // 설계 변경으로 주석 처리
 import Archive from "./pages/Archive"
 import SubmitQuest from "./pages/SubmitQuest"
 
@@ -54,8 +54,8 @@ const MainLayout = ({ children, isAuthenticated, currentUser, navValue, setNavVa
         sx={{ position: "fixed", bottom: 0, width: "100%" }}
       >
         <BottomNavigationAction label="홈" icon={<HomeIcon />} />
-        <BottomNavigationAction label="오늘의 퀘스트" icon={<TrendingUpIcon />} />
-        <BottomNavigationAction label="제출" icon={<TrendingUpIcon />} />
+        <BottomNavigationAction label="오늘의 퀘스트" icon={<AssignmentIcon />} />
+        <BottomNavigationAction label="제출" icon={<AddCircleOutlineIcon />} />
         <BottomNavigationAction label="알림" icon={<NotificationsIcon />} />
         <BottomNavigationAction label="프로필" icon={<PersonIcon />} />
       </BottomNavigation>
@@ -73,6 +73,22 @@ function MainAppContent() {
   const [navValue, setNavValue] = useState(0); 
 
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const pathname = location.pathname;
+    if (pathname === '/') {
+      setNavValue(0);
+    } else if (pathname === '/today-quest') {
+      setNavValue(1);
+    } else if (pathname === '/submit-quest') {
+      setNavValue(2);
+    } else if (pathname === '/notifications') {
+      setNavValue(3);
+    } else if (pathname.startsWith('/profile/')) {
+      setNavValue(4);
+    }
+  }, [location.pathname]); 
 
   const isAuthenticatedRef = useRef(isAuthenticated); 
   useEffect(() => {
@@ -90,16 +106,27 @@ function MainAppContent() {
     if (token) {
       try {
         const decoded = jwtDecode(token)
-        setCurrentUser(decoded)
-        setIsAuthenticated(true)
+        const currentTime = Date.now() / 1000; 
+        if (decoded.exp < currentTime) {
+          localStorage.removeItem("token");
+          localStorage.removeItem("userId");
+          setIsAuthenticated(false);
+          setCurrentUser(null);
+          console.log("Expired token found, logging out.");
+        } else {
+          setCurrentUser(decoded);
+          setIsAuthenticated(true);
+        }
       } catch (err) {
-        localStorage.removeItem("token")
-        localStorage.removeItem("userId")
-        setIsAuthenticated(false)
+        console.error("Error decoding token:", err);
+        localStorage.removeItem("token");
+        localStorage.removeItem("userId");
+        setIsAuthenticated(false);
+        setCurrentUser(null);
       }
     }
-    setLoading(false); 
-  }, []) 
+    setLoading(false);
+  }, [])
 
 
   useEffect(() => {
@@ -189,7 +216,7 @@ function MainAppContent() {
             path="/submit-quest"
             element={
               <ProtectedRoute isAuthenticated={isAuthenticated}>
-                <SubmitQuest currentUser={currentUser} />
+                <SubmitQuest currentUser={currentUser} setNavValue={setNavValue} />
               </ProtectedRoute>
             }
           />
