@@ -117,6 +117,42 @@ router.get("/quest/:dailyQuestId", authMiddleware, async (req, res) => {
   }
 });
 
+// 단일 제출물 조회
+router.get("/:submissionId", authMiddleware, async (req, res) => {
+  try {
+    const { submissionId } = req.params;
+
+    const sqlQuery = `
+      SELECT
+        s.id, s.daily_quest_id, s.user_id, s.content_text as content, s.content_image_url as image_url, s.created_at,
+        u.nickname, u.nickname_tag, u.profile_image_url as userProfileImage,
+        q.title as questTitle,
+        COUNT(DISTINCT l.user_id) as likeCount,
+        COUNT(DISTINCT c.id) as commentCount
+      FROM submissions s
+      JOIN users u ON s.user_id = u.id
+      JOIN daily_quests dq ON s.daily_quest_id = dq.id
+      JOIN quests q ON dq.quest_id = q.id
+      LEFT JOIN likes l ON s.id = l.submission_id
+      LEFT JOIN comments c ON s.id = c.submission_id
+      WHERE s.id = ?
+      GROUP BY s.id
+    `;
+
+    const [submissions] = await db.query(sqlQuery, [submissionId]);
+
+    if (submissions.length === 0) {
+      return res.status(404).json({ message: "게시물을 찾을 수 없습니다." });
+    }
+
+    res.status(200).json({ submission: submissions[0] });
+  } catch (err) {
+    console.error("단일 제출물 조회 오류:", err);
+    res.status(500).json({ message: "서버 오류" });
+  }
+});
+
+
 // 제출물 생성
 router.post("/", authMiddleware, upload.array("images", 5), async (req, res) => {
   try {

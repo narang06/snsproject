@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Link } from 'react-router-dom';
 import {
   Container,
@@ -23,16 +23,20 @@ import {
   Select,
   InputLabel,
   FormControl,
-  Stack
+  Stack,
+  IconButton
 } from "@mui/material"
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder"
 import FavoriteIcon from "@mui/icons-material/Favorite"
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline"
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import SubmissionCard from '../components/SubmissionCard';
 import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { ko } from 'date-fns/locale';
 import { format } from 'date-fns'; 
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const Home = ({ currentUser }) => {
   const [submissions, setSubmissions] = useState([])
@@ -49,6 +53,11 @@ const Home = ({ currentUser }) => {
   const [searchQuery, setSearchQuery] = useState("") 
   const [sortOrder, setSortOrder] = useState("latest")
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('')
+  const [highlightedCommentId, setHighlightedCommentId] = useState(null)
+  const [editingCommentId, setEditingCommentId] = useState(null)
+  const [editedCommentContent, setEditedCommentContent] = useState("")
+  const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     // 500ms(0.5초) 후에 검색어가 debouncedSearchQuery에 저장되도록 타이머 설정
@@ -66,6 +75,33 @@ const Home = ({ currentUser }) => {
     fetchSubmissions(selectedDate, debouncedSearchQuery, sortOrder);
   }, [selectedDate, debouncedSearchQuery, sortOrder])
 
+  useEffect(() => {
+    const queryParams = new URLSearchParams(location.search);
+    const openSubmissionId = queryParams.get('openSubmission');
+    const highlightCommentId = queryParams.get('highlightComment');
+
+    if (openSubmissionId) {
+      const fetchAndOpenSubmission = async () => {
+        try {
+          const token = localStorage.getItem("token");
+          const response = await fetch(`http://localhost:3010/submissions/${openSubmissionId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const data = await response.json();
+          if (response.ok && data.submission) {
+            handleOpenModal(data.submission, highlightCommentId);
+          } else {
+            console.error("게시물 로드 실패:", data.message || "게시물을 찾을 수 없습니다.");
+          }
+        } catch (error) {
+          console.error("게시물 로드 중 오류 발생:", error);
+        } finally {
+          navigate(location.pathname, { replace: true });
+        }
+      };
+      fetchAndOpenSubmission();
+    }
+    }, [location.search, navigate, currentUser ]); 
   const fetchSubmissions = async (date, query, sort) => {
     setLoading(true);
     try {
@@ -100,7 +136,7 @@ const Home = ({ currentUser }) => {
     }
   }
 
-  const handleOpenModal = async (submission) => {
+  const handleOpenModal = useCallback(async (submission, highlightCommentId = null) => {
     setSelectedSubmission(submission)
     setOpenModal(true)
 
@@ -126,11 +162,23 @@ const Home = ({ currentUser }) => {
 
         commentsList.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
         setComments(commentsList); 
+
+        if (highlightCommentId) {
+          setTimeout(() => {
+            const commentElement = document.getElementById(`comment-${highlightCommentId}`);
+            commentElement?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            setHighlightedCommentId(highlightCommentId); 
+            setTimeout(() => {
+              setHighlightedCommentId(null);
+            }, 2000);
+          }, 300);
+        }
       }
     } catch (err) {
       console.error("댓글 로드 실패:", err)
     }
-  }
+  }, [setOpenModal, setSelectedSubmission, setComments, setHighlightedCommentId, setLatestAuthorComment]);
 
   const handleCloseModal = () => {
     setOpenModal(false)
@@ -223,7 +271,70 @@ const Home = ({ currentUser }) => {
     setSelectedImageForModal(null);
   };
 
+  const handleDeleteComment = async (commentId) => {
+    if (!window.confirm("정말로 이 댓글을 삭제하시겠습니까?")) {
+      return;
+    }
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`http://localhost:3010/comments/${commentId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
+      if (!response.ok) {
+        const data = await response.json();
+        alert(data.message || "댓글 삭제 실패");
+        return;
+      }
+      setComments(comments.filter(comment => comment.id !== commentId));
+      alert("댓글이 삭제되었습니다.");
+    } catch (err) {
+      console.error("댓글 삭제 오류:", err);
+      alert("서버 연결 오류");
+    }
+  };
+
+  const handleEditCommentClick = (comment) => {
+    setEditingCommentId(comment.id);
+    setEditedCommentContent(comment.content);
+  };
+
+  const handleCancelEditComment = () => {
+    setEditingCommentId(null);
+    setEditedCommentContent("");
+  };
+
+  const handleSaveEditedComment = async (commentId) => {
+    if (editedCommentContent.trim().length < 1 || editedCommentContent.trim().length > 500) {
+      alert("댓글 내용은 1자 이상 500자 이하로 입력해주세요.");
+      return;
+    }
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`http://localhost:3010/comments/${commentId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ content: editedCommentContent }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        alert(data.message || "댓글 수정 실패");
+        return;
+      }
+      const updatedComment = await response.json();
+      setComments(comments.map(comment => comment.id === commentId ? updatedComment : comment));
+      handleCancelEditComment(); 
+      alert("댓글이 수정되었습니다.");
+    } catch (err) {
+      console.error("댓글 수정 오류:", err);
+      alert("서버 연결 오류");
+    }
+  };
 
   if (loading) {
     return (
@@ -237,42 +348,49 @@ const Home = ({ currentUser }) => {
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ko}>
       <Container maxWidth="sm" sx={{ paddingTop: 2 }}>
         <Stack spacing={2} sx={{ marginBottom: 3 }}>
-          {/* 검색 관련 */}
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
             <DatePicker
               label="날짜 선택"
               value={selectedDate}
-              onChange={(newValue) => {
-                setSelectedDate(newValue);
-                setSearchQuery('');
-              }}
+              onChange={(newValue) => { setSelectedDate(newValue); setSearchQuery(''); }}
               disabled={!!searchQuery}
-              renderInput={(params) => <TextField {...params} size="small" fullWidth />}
-              inputFormat="yyyy-MM-dd"
-              mask="____-__-__"
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  size="medium"
+                  fullWidth
+                  sx={{
+                    backgroundColor: "#f9f9f9",
+                    borderRadius: 2,
+                    '& .MuiOutlinedInput-notchedOutline': { borderColor: "#ccc" },
+                  }}
+                />
+              )}
             />
             <TextField
               fullWidth
               variant="outlined"
-              size="small"
+              size="medium"
               label="닉네임 검색"
               value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                if (e.target.value) setSelectedDate(null);
-              }}
+              onChange={(e) => { setSearchQuery(e.target.value); if(e.target.value) setSelectedDate(null); }}
               disabled={!!selectedDate}
+              sx={{
+                backgroundColor: "#f9f9f9",
+                borderRadius: 2,
+                '& .MuiOutlinedInput-notchedOutline': { borderColor: "#ccc" },
+              }}
             />
           </Stack>
 
-          {/* 정렬/초기화 */}
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems="center">
-            <FormControl sx={{ minWidth: 120 }} size="small">
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="center">
+            <FormControl size="medium" sx={{ minWidth: 140 }}>
               <InputLabel>정렬</InputLabel>
               <Select
                 value={sortOrder}
                 label="정렬"
                 onChange={(e) => setSortOrder(e.target.value)}
+                sx={{ borderRadius: 2, backgroundColor: "#f9f9f9" }}
               >
                 <MenuItem value="latest">최신순</MenuItem>
                 <MenuItem value="likes">좋아요순</MenuItem>
@@ -281,17 +399,16 @@ const Home = ({ currentUser }) => {
             </FormControl>
 
             <Button
-              variant="outlined"
-              onClick={() => {
-                setSelectedDate(null);
-                setSearchQuery('');
-              }}
-              sx={{ height: 40 }}
+              variant="contained"
+              color="primary"
+              onClick={() => { setSelectedDate(null); setSearchQuery(''); }}
+              sx={{ borderRadius: 2, height: 44, textTransform: "none" }}
             >
               필터 초기화
             </Button>
           </Stack>
         </Stack>
+
 
         {submissions.length === 0 ? (
           <Typography sx={{ textAlign: "center", marginTop: 4 }}>아직 게시물이 없습니다</Typography>
@@ -364,8 +481,24 @@ const Home = ({ currentUser }) => {
                   ) : (
                     comments.map((comment) => {
                       const isAuthor = comment.user_id === selectedSubmission.user_id;
+                      const isHighlighted = highlightedCommentId && (highlightedCommentId == comment.id);
+                      const isEditing = editingCommentId === comment.id;
                       return (
-                        <Box key={comment.id} sx={{ display: 'flex', alignItems: 'flex-start', marginBottom: 2, p: 1, borderRadius: 1, backgroundColor: isAuthor ? '#F3F4F6' : 'transparent' }}>
+                        <Box 
+                          key={comment.id} 
+                          id={`comment-${comment.id}`} 
+                          sx={{ 
+                            display: 'flex', 
+                            flexDirection: 'column',
+                            marginBottom: 2, 
+                            p: 1, 
+                            borderRadius: 1, 
+                            backgroundColor: isHighlighted ? '#FFF0B3' : (isAuthor ? '#F3F4F6' : 'transparent'), 
+                            transition: 'background-color 0.3s ease-in-out, border-color 0.3s ease-in-out',
+                            border: isHighlighted ? '2px solid #FFD700' : '1px solid transparent',
+                            boxSizing: 'border-box',
+                          }}>
+                          <Box sx={{ display: 'flex', alignItems: 'flex-start', width: '100%' }}>
                             <Link to={`/profile/${comment.user_id}`} onClick={handleCloseModal}>
                               <Avatar src={comment.profile_image_url} alt={comment.nickname} sx={{ width: 30, height: 30, marginRight: 1 }} />
                             </Link>
@@ -386,9 +519,40 @@ const Home = ({ currentUser }) => {
                                 })}
                               </Typography>
                             </Box>
-                            <Typography variant="body2">{comment.content}</Typography>
+                            {isEditing ? (
+                              <TextField
+                                fullWidth
+                                multiline
+                                value={editedCommentContent}
+                                onChange={(e) => setEditedCommentContent(e.target.value)}
+                                variant="outlined"
+                                size="small"
+                                sx={{ mt: 1, mb: 1 }}
+                                error={editedCommentContent.length > 500}
+                                helperText={`${editedCommentContent.length}/500 ${editedCommentContent.length > 500 ? ' (500자를초과했습니다)' : ''}`}
+                              />
+                            ) : (
+                              <Typography variant="body2">{comment.content}</Typography>
+                            )}
                           </Box>
+                          {isAuthor && !isEditing && ( 
+                            <Box sx={{ ml: 1, display: 'flex', gap: 0.5 }}>
+                              <IconButton size="small" onClick={() => handleEditCommentClick(comment)} color="primary">
+                                <EditIcon fontSize="small" />
+                              </IconButton>
+                              <IconButton size="small" onClick={() => handleDeleteComment(comment.id)} color="error">
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Box>
+                          )}
                         </Box>
+                        {isEditing && ( 
+                          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 1 }}>
+                            <Button size="small" variant="outlined" onClick={handleCancelEditComment}>취소</Button>
+                            <Button size="small" variant="contained" onClick={() => handleSaveEditedComment(comment.id)}>저장</Button>
+                          </Box>
+                        )}
+                      </Box>  
                       );
                     })
                   )}
@@ -428,7 +592,7 @@ const Home = ({ currentUser }) => {
             {selectedImageForModal && (
               <Box
                 component="img"
-                src={`http://localhost:3010${selectedImageForModal}`}
+                src={selectedImageForModal}
                 alt="원본 이미지"
                 onError={(e) => { e.target.src = 'https://via.placeholder.com/300?text=Image+Not+Found'; }}
                 sx={{ width: '100%', height: 'auto', borderRadius: 1 }}

@@ -34,7 +34,7 @@ router.post("/", authMiddleware, async (req, res) => {
       await db.query("INSERT INTO notifications (recipient_id, sender_id, type, target_type, target_id) VALUES (?, ?, ?, ?, ?)", [
         submissions[0].user_id,
         userId,                
-        "LIKE",                
+        "like",                
         "SUBMISSION",          
         submissionId,          
       ])

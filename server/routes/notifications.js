@@ -10,10 +10,12 @@ router.get("/", authMiddleware, async (req, res) => {
     const userId = req.user.userId
 
     const [notifications] = await db.query(
-      `SELECT n.id, n.recipient_id, n.sender_id, n.type, n.target_type, n.target_id, n.is_read, n.created_at,
-              u.nickname as fromUserName, u.nickname_tag as fromUserNicknameTag, u.profile_image_url as fromUserProfileImage
+      `SELECT n.id, n.recipient_id, n.sender_id, n.type, n.target_type, n.target_id, n.comment_id, n.is_read, n.created_at,
+          s.content_text AS submissionContent,
+          u.nickname as fromUserName, u.nickname_tag as fromUserNicknameTag, u.profile_image_url as fromUserProfileImage
        FROM notifications n
        LEFT JOIN users u ON n.sender_id = u.id
+       LEFT JOIN submissions s ON n.target_type = 'SUBMISSION' AND n.target_id = s.id
        WHERE n.recipient_id = ?
        ORDER BY n.created_at DESC
        LIMIT 50`,

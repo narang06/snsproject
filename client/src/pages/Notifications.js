@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
 import {
   Container,
   List,
@@ -20,11 +21,13 @@ import PersonAddIcon from "@mui/icons-material/PersonAdd"
 const Notifications = ({ currentUser }) => {
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(true)
+  const navigate = useNavigate()
 
   useEffect(() => {
     fetchNotifications()
   }, [])
 
+  
   const fetchNotifications = async () => {
     try {
       const token = localStorage.getItem("token")
@@ -53,13 +56,24 @@ const Notifications = ({ currentUser }) => {
 
       if (response.ok) {
         setNotifications(
-          notifications.map((notif) => (notif.id === notificationId ? { ...notif, isRead: true } : notif)),
+          notifications.map((notif) => (notif.id === notificationId ? { ...notif, is_read: true } : notif)),
         )
       }
     } catch (err) {
       console.error("알림 읽음 표시 실패:", err)
     }
   }
+
+  const handleNotificationClick = (notification) => {
+    handleMarkAsRead(notification.id); 
+    if (notification.type === 'like') { 
+      navigate(`/?openSubmission=${notification.target_id}`); 
+    } else if (notification.type === 'comment') { 
+      navigate(`/?openSubmission=${notification.target_id}&highlightComment=${notification.comment_id}`); 
+    } else if (notification.type === 'follow') {
+      navigate(`/profile/${notification.sender_id}`);
+    }
+  };
 
   const getNotificationIcon = (type) => {
     switch (type) {
@@ -89,7 +103,7 @@ const Notifications = ({ currentUser }) => {
 
   if (loading) {
     return (
-      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
+      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
         <CircularProgress />
       </Box>
     )
@@ -109,13 +123,13 @@ const Notifications = ({ currentUser }) => {
             <ListItem
               key={notification.id}
               sx={{
-                backgroundColor: notification.isRead ? "transparent" : "#F3F4F6",
+                backgroundColor: notification.is_read ? "transparent" : "#F3F4F6",
                 marginBottom: 1,
                 borderRadius: 1,
                 cursor: "pointer",
                 "&:hover": { backgroundColor: "#E5E7EB" },
               }}
-              onClick={() => handleMarkAsRead(notification.id)}
+              onClick={() => handleNotificationClick(notification)}
             >
               <ListItemAvatar>
                 <Avatar src={notification.fromUserProfileImage} alt={notification.fromUserName} />
@@ -127,7 +141,11 @@ const Notifications = ({ currentUser }) => {
                     {getNotificationMessage(notification)}
                   </Typography>
                 }
-                secondary={new Date(notification.createdAt).toLocaleDateString()}
+                secondary={
+                  new Date(notification.created_at).toLocaleString('ko-KR', {
+                    year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                  })
+                }
               />
               <Box sx={{ marginLeft: 1 }}>{getNotificationIcon(notification.type)}</Box>
             </ListItem>

@@ -34,8 +34,8 @@ const MainLayout = ({ children, isAuthenticated, currentUser, navValue, setNavVa
   }
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", height: "100vh" }}>
-      <Box sx={{ flex: 1, overflowY: "auto", paddingBottom: 7 }}>
+    <Box sx={{ display: "flex", flexDirection: "column", minheight: "100dvh", paddingBottom: 7}}>
+      <Box sx={{ flex: 1 }}>
         {children}
       </Box>
       <BottomNavigation
