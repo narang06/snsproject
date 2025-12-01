@@ -4,6 +4,7 @@ import authMiddleware from "../auth.js";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { addResolvedMentions } from '../utils/mentionUtils.js';
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -80,9 +81,11 @@ router.get("/:userId", authMiddleware, async (req, res) => {
       followingCount: followingCount[0].count,
     };
 
+    const submissionsWithMentions = await addResolvedMentions(submissions);
+
     res.status(200).json({
       user: responseUser,
-      submissions,
+      submissions: submissionsWithMentions,
       isFollowing: isFollowing.length > 0,
     });
   } catch (err) {

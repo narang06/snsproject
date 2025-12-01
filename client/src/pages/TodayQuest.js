@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react" 
 import { Link } from 'react-router-dom';
 import {
   Container,
@@ -27,10 +27,14 @@ import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder"
 import FavoriteIcon from "@mui/icons-material/Favorite"
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline"
 import SubmissionCard from '../components/SubmissionCard';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import { parseMentions } from "../utils/mentionParser";
+import { useSubmissions } from '../contexts/SubmissionsContext';
 
 const TodayQuest = ({ currentUser }) => {
+  const { submissions, setSubmissions, likedSubmissions, handleLikeInContext, updateSubmissionCommentCount } = useSubmissions();
   const [quest, setQuest] = useState(null)
-  const [submissions, setSubmissions] = useState([])
   const [loading, setLoading] = useState(true)
   const [timeLeft, setTimeLeft] = useState("")
   const [progressValue, setProgressValue] = useState(100);
@@ -38,11 +42,11 @@ const TodayQuest = ({ currentUser }) => {
   const [selectedSubmission, setSelectedSubmission] = useState(null)
   const [comments, setComments] = useState([])
   const [newComment, setNewComment] = useState("")
-  const [likedSubmissions, setLikedSubmissions] = useState(new Set())
   const [imageModalOpen, setImageModalOpen] = useState(false)
   const [selectedImageForModal, setSelectedImageForModal] = useState(null)
   const [latestAuthorComment, setLatestAuthorComment] = useState(null);
-
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editedCommentContent, setEditedCommentContent] = useState("");
 
   useEffect(() => {
     fetchTodayQuest()
@@ -64,18 +68,18 @@ const TodayQuest = ({ currentUser }) => {
       setTimeLeft(`${hours.toString().padStart(2,'0')}:${minutes.toString().padStart(2,'0')} 남음`)
 
       const totalDayMillis = 24 * 60 * 60 * 1000;
-      const elapsedDayMillis = now.getTime() - new Date(now).setHours(0,0,0,0); // 오늘 00:00부터 경과한 시간
+      const elapsedDayMillis = now.getTime() - new Date(now).setHours(0,0,0,0);
       const progress = (elapsedDayMillis / totalDayMillis) * 100;
-      setProgressValue(100 - progress); // 남은 시간을 기준으로 100에서 차감
+      setProgressValue(100 - progress); 
     }
 
     updateTimer()
-    const interval = setInterval(updateTimer, 60000) // 랜더링 1분마다
+    const interval = setInterval(updateTimer, 60000) 
 
     return () => clearInterval(interval)
   }, [quest])
 
-  const fetchTodayQuest = async () => {
+  const fetchTodayQuest = useCallback(async () => { 
     try {
       const token = localStorage.getItem("token")
       const response = await fetch("http://localhost:3010/quests/today", {
@@ -85,29 +89,39 @@ const TodayQuest = ({ currentUser }) => {
       const data = await response.json()
       if (response.ok) {
         setQuest(data.quest)
-        setSubmissions(data.submissions)
+        setSubmissions(data.submissions) // Context의 setSubmissions 사용
+      } else {
+        if(response.status !== 404) {
+          alert(data.message || '오늘의 퀘스트 피드를 불러오는 데 실패했습니다.');
+        }
+        setSubmissions([]); // Context의 setSubmissions 사용
       }
     } catch (err) {
       console.error("오늘의 퀘스트 로드 실패:", err)
+      setSubmissions([]); // Context의 setSubmissions 사용
     } finally {
       setLoading(false)
     }
-  }
+  }, [setSubmissions]); // Context의 setSubmissions에 의존
 
-  const handleOpenModal = async (submission) => {
-    setSelectedSubmission(submission)
-    setOpenModal(true)
+  useEffect(() => {
+    fetchTodayQuest()
+  }, [fetchTodayQuest]) 
+
+  const handleOpenModal = useCallback(async (submission) => {
+    setSelectedSubmission(submission);
+    setOpenModal(true);
 
     try {
-      const token = localStorage.getItem("token")
+      const token = localStorage.getItem("token");
       const response = await fetch(`http://localhost:3010/comments/submission/${submission.id}`, {
         headers: { Authorization: `Bearer ${token}` },
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
       if (response.ok) {
-        let commentsList = [...data]; 
-        const postAuthorId = submission.user_id; 
+        let commentsList = [...data];
+        const postAuthorId = submission.user_id;
 
         const authorComments = commentsList.filter(c => c.user_id === postAuthorId);
         let foundLatestAuthorComment = null;
@@ -116,16 +130,17 @@ const TodayQuest = ({ currentUser }) => {
             return new Date(current.created_at) > new Date(latest.created_at) ? current : latest;
           }, authorComments[0]);
         }
-        setLatestAuthorComment(foundLatestAuthorComment); 
+        setLatestAuthorComment(foundLatestAuthorComment);
 
         commentsList.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-        setComments(commentsList); 
+        setComments(commentsList);
       }
     } catch (err) {
-      console.error("댓글 로드 실패:", err)
+      console.error("댓글 로드 실패:", err);
     }
-  }
+  }, []); 
 
+  
   const handleCloseModal = () => {
     setOpenModal(false)
     setSelectedSubmission(null)
@@ -156,10 +171,12 @@ const TodayQuest = ({ currentUser }) => {
         setComments(updatedComments);
         setNewComment("");
 
+          updateSubmissionCommentCount(selectedSubmission.id, 1); // 댓글 수 1 증가
+
         const postAuthorId = selectedSubmission.user_id;
         if (data.user_id === postAuthorId) {
           if (!latestAuthorComment || new Date(data.created_at) > new Date(latestAuthorComment.created_at)) {
-            setLatestAuthorComment(data); 
+            setLatestAuthorComment(data);
           }
         }
       }
@@ -168,233 +185,82 @@ const TodayQuest = ({ currentUser }) => {
     }
   }
 
-  const handleLike = async (submission) => {
-    try {
-      const token = localStorage.getItem("token")
-      const isLiked = likedSubmissions.has(submission.id)
-
-      const response = await fetch("http://localhost:3010/likes", {
-        method: isLiked ? "DELETE" : "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ submissionId: submission.id }),
-      })
-
-      if (response.ok) {
-        const newLiked = new Set(likedSubmissions)
-        if (isLiked) {
-          newLiked.delete(submission.id)
-        } else {
-          newLiked.add(submission.id)
-        }
-        setLikedSubmissions(newLiked)
-
-        setSubmissions(
-          submissions.map((s) =>
-            s.id === submission.id
-              ? {
-                  ...s,
-                  likeCount: isLiked ? s.likeCount - 1 : s.likeCount + 1,
-                }
-              : s,
-          ),
-        )
-      }
-    } catch (err) {
-      console.error("좋아요 실패:", err)
-    }
-  }
-
-  const handleScrollNext = (imagesLength) => {
-    if (scrollContainerRef.current) {
-      const newIndex = Math.min(currentImageIndex + 1, imagesLength - 1);
-      scrollContainerRef.current.scrollTo({
-        left: scrollContainerRef.current.offsetWidth * newIndex,
-        behavior: 'smooth'
-      });
-      setCurrentImageIndex(newIndex);
-    }
-  };
-
-  const handleScrollPrev = () => {
-    if (scrollContainerRef.current) {
-      const newIndex = Math.max(currentImageIndex - 1, 0);
-      scrollContainerRef.current.scrollTo({
-        left: scrollContainerRef.current.offsetWidth * newIndex,
-        behavior: 'smooth'
-      });
-      setCurrentImageIndex(newIndex);
-    }
-  };
+  const handleLike = handleLikeInContext;
 
   const handleOpenImageModal = (imageUrl) => {
     setSelectedImageForModal(imageUrl);
     setImageModalOpen(true);
   };
 
-  const SubmissionCardItem = ({ submission, handleOpenModal, handleOpenImageModal, handleLike, likedSubmissions }) => {
-    const scrollContainerRefLocal = useRef(null); 
-    const [currentImageIndexLocal, setCurrentImageIndexLocal] = useState(0); 
-
-    const handleScrollNextLocal = (imagesLength) => {
-      if (scrollContainerRefLocal.current) {
-        const newIndex = Math.min(currentImageIndexLocal + 1, imagesLength - 1);
-        scrollContainerRefLocal.current.scrollTo({
-          left: scrollContainerRefLocal.current.offsetWidth * newIndex,
-          behavior: 'smooth'
-        });
-        setCurrentImageIndexLocal(newIndex);
-      }
-    };
-
-    const handleScrollPrevLocal = () => {
-      if (scrollContainerRefLocal.current) {
-        const newIndex = Math.max(currentImageIndexLocal - 1, 0);
-        scrollContainerRefLocal.current.scrollTo({
-          left: scrollContainerRefLocal.current.offsetWidth * newIndex,
-          behavior: 'smooth'
-        });
-        setCurrentImageIndexLocal(newIndex);
-      }
-    };
-
-    let images = [];
-    try {
-      const parsedImages = JSON.parse(submission.image_url);
-      if (Array.isArray(parsedImages)) {
-        images = parsedImages;
-      }
-    } catch (e) {
-      if (typeof submission.image_url === 'string' && submission.image_url.startsWith('/uploads/')) {
-        images = [submission.image_url];
-      }
+  const handleDeleteComment = async (commentId) => {
+    if (!window.confirm("정말로 이 댓글을 삭제하시겠습니까?")) {
+      return;
     }
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`http://localhost:3010/comments/${commentId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-    return (
-      <Card key={submission.id} sx={{ marginBottom: 2 }}>
-        <CardHeader
-          avatar={
-            <Avatar src={`http://localhost:3010${submission.userProfileImage}`} 
-            alt={submission.nickname} 
-            onError={(e) => { e.target.src ='https://via.placeholder.com/40?text=N/A'; }} 
-            />
-          }  
-          title={<Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>{submission.nickname}</Typography>}
-          subheader={
-            <>
-              <Typography variant="caption" sx={{ fontSize: '0.8rem', display: 'block' }}>
-                {new Date(submission.created_at).toLocaleDateString("ko-KR")}
-              </Typography>
-              <Typography variant="caption" sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>
-                {new Date(submission.created_at).toLocaleTimeString("ko-KR")}
-              </Typography>
-            </>
-          }
-        />
-        {images.length > 0 && (
-          <Box sx={{ position: 'relative' }}>
-            <Box
-              ref={scrollContainerRefLocal} 
-              sx={{
-                display: 'flex',
-                overflowX: 'scroll',
-                scrollSnapType: 'x mandatory',
-                borderTop: 1,
-                borderBottom: 1,
-                borderColor: 'divider',
-                '&::-webkit-scrollbar': { display: 'none' },
-                '-ms-overflow-style': 'none',
-                'scrollbar-width': 'none',
-              }}
-              onScroll={(e) => {
-                const newIndex = Math.round(e.currentTarget.scrollLeft / e.currentTarget.offsetWidth);
-                if (newIndex !== currentImageIndexLocal) {
-                  setCurrentImageIndexLocal(newIndex);
-                }
-              }}
-            >
-              {images.map((imgUrl, index) => (
-                <Box
-                  key={index}
-                  sx={{
-                    minWidth: '100%',
-                    height: 300,
-                    flexShrink: 0,
-                    scrollSnapAlign: 'start',
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    backgroundColor: '#f0f0f0',
-                  }}
-                >
-                  <CardMedia
-                    component="img"
-                    image={`http://localhost:3010${imgUrl}`} 
-                    alt={`제출물 이미지 ${index + 1}`}
-                    onError={(e) => { e.target.src = 'https://via.placeholder.com/300?text=Image+Not+Found'; }}
-                    sx={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'contain',
-                      cursor: 'pointer',
-                    }}
-                    onClick={() => handleOpenImageModal(`http://localhost:3010${imgUrl}`)}
-                  />
-                </Box>
-              ))}
-            </Box>
+      if (!response.ok) {
+        const data = await response.json();
+        alert(data.message || "댓글 삭제 실패");
+        return;
+      }
+      setComments(comments.filter(comment => comment.id !== commentId));
+      updateSubmissionCommentCount(selectedSubmission.id, -1);
 
-            {images.length > 1 && (
-              <>
-                <IconButton
-                  sx={{
-                    position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)',
-                    backgroundColor: 'rgba(0,0,0,0.4)', color: 'white', '&:hover': { backgroundColor: 'rgba(0,0,0,0.6)' }, zIndex: 1
-                  }}
-                  onClick={() => handleScrollPrevLocal()} // 로컬 핸들러 사용
-                  disabled={currentImageIndexLocal === 0} // 로컬 상태 사용
-                >
-                  <ArrowBackIosIcon fontSize="small" />
-                </IconButton>
-                <IconButton
-                  sx={{
-                    position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
-                    backgroundColor: 'rgba(0,0,0,0.4)', color: 'white', '&:hover': { backgroundColor: 'rgba(0,0,0,0.6)' }, zIndex: 1
-                  }}
-                  onClick={() => handleScrollNextLocal(images.length)} // 로컬 핸들러 사용
-                  disabled={currentImageIndexLocal === images.length - 1} // 로컬 상태 사용
-                >
-                  <ArrowForwardIosIcon fontSize="small" />
-                </IconButton>
-              </>
-            )}
-          </Box>
-        )}
-        <CardContent>
-          <Typography variant="body1">{submission.content}</Typography>
-        </CardContent>
-        <CardActions>
-          <Button
-            size="small"
-            onClick={() => handleLike(submission)}
-            startIcon={
-              likedSubmissions.has(submission.id) ? (
-                <FavoriteIcon sx={{ color: "#EC4899" }} />
-              ) : (
-                <FavoriteBorderIcon />
-              )
-            }
-          >
-            {submission.likeCount}
-          </Button>
-          <Button size="small" startIcon={<ChatBubbleOutlineIcon />} onClick={() => handleOpenModal(submission)}>
-            {submission.commentCount}
-          </Button>
-        </CardActions>
-      </Card>
-    );
+      if (latestAuthorComment && latestAuthorComment.id === commentId) {
+        setLatestAuthorComment(null);
+      }
+
+      alert("댓글이 삭제되었습니다.");
+    } catch (err) {
+      console.error("댓글 삭제 오류:", err);
+      alert("서버 연결 오류");
+    }
+  };
+
+  const handleEditCommentClick = (comment) => {
+    setEditingCommentId(comment.id);
+    setEditedCommentContent(comment.content);
+  };
+
+  const handleCancelEditComment = () => {
+    setEditingCommentId(null);
+    setEditedCommentContent("");
+  };
+
+  const handleSaveEditedComment = async (commentId) => {
+    if (editedCommentContent.trim().length < 1 || editedCommentContent.trim().length > 500) {
+      alert("댓글 내용은 1자 이상 500자 이하로 입력해주세요.");
+      return;
+    }
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`http://localhost:3010/comments/${commentId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ content: editedCommentContent }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        alert(data.message || "댓글 수정 실패");
+        return;
+      }
+      const updatedComment = await response.json();
+      setComments(comments.map(comment => comment.id === commentId ? updatedComment : comment));
+      handleCancelEditComment();
+      alert("댓글이 수정되었습니다.");
+    } catch (err) {
+      console.error("댓글 수정 오류:", err);
+      alert("서버 연결 오류");
+    }
   };
 
   const handleCloseImageModal = () => {
@@ -466,7 +332,7 @@ const TodayQuest = ({ currentUser }) => {
             submission={submission}
             handleOpenModal={handleOpenModal}
             handleOpenImageModal={handleOpenImageModal}
-            handleLike={handleLike}
+            handleLike={handleLikeInContext}
             likedSubmissions={likedSubmissions}
             currentUserId={currentUser?.userId}
           />
@@ -527,41 +393,79 @@ const TodayQuest = ({ currentUser }) => {
                     아직 댓글이 없습니다
                   </Typography>
                 ) : (
-                  comments.map((comment) => {
-                    const isAuthor = comment.user_id === selectedSubmission.user_id;
-                    return (
-                      <Box key={comment.id} sx={{ display: 'flex', alignItems: 'flex-start', marginBottom: 2, p: 1, borderRadius: 1, backgroundColor: isAuthor ?'#F3F4F6' : 'transparent' }}>
-                        <Link to={`/profile/${comment.user_id}`} onClick={handleCloseModal}>
-                            <Avatar
-                              src={`http://localhost:3010${comment.profile_image_url}`}
-                              alt={comment.nickname}
-                              sx={{ width: 30, height: 30, marginRight: 1 }}
-                              onError={(e) => { e.target.src = 'https://via.placeholder.com/40?text=N/A'; }}
-                            />
-                        </Link>
-                        <Box sx={{ flexGrow: 1 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
-                              {comment.nickname}
-                            </Typography>
-                            {isAuthor && (
-                              <Typography variant="caption" sx={{ backgroundColor: '#6366F1', color: 'white', px: 0.5, borderRadius: 1, fontSize: '0.6rem' }}>
-                                작성자
-                              </Typography>
-                            )}
-                            <Typography variant="caption" color="textSecondary" sx={{ ml: 'auto' }}>
-                              {new Date(comment.created_at).toLocaleString('ko-KR', {
-                                year: 'numeric', month: 'numeric', day: 'numeric',
-                                hour: '2-digit', minute: '2-digit'
-                              })}
-                            </Typography>
-                          </Box>
-                          <Typography variant="body2">{comment.content}</Typography>
-                        </Box>
-                      </Box>
-                    );
-                  })
-                )}
+                    comments.map((comment) => {
+                       const isAuthor = comment.user_id === currentUser?.userId;
+                       const isHighlighted = false; // TodayQuest.js에는 하이라이트 기능이 없음
+                       const isEditing = editingCommentId === comment.id;
+                       return (
+                         <Box
+                           key={comment.id}
+                           id={`comment-${comment.id}`}
+                           sx={{
+                             display: 'flex',
+                             flexDirection: 'column',
+                             marginBottom: 2,
+                             p: 1,
+                             borderRadius: 1,
+                             backgroundColor: isHighlighted ? '#FFF0B3' : (isAuthor ? '#F3F4F6' : 'transparent'),
+                           }}>
+                           <Box sx={{ display: 'flex', alignItems: 'flex-start', width: '100%' }}>
+                             <Link to={`/profile/${comment.user_id}`} onClick={handleCloseModal}>
+                               <Avatar src={`http://localhost:3010${comment.profile_image_url}`} alt={comment.nickname} sx={{ width: 30, height: 30, marginRight: 1 }} />
+                             </Link>
+                           <Box sx={{ flexGrow: 1 }}>
+                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                               <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                                 {comment.nickname}
+                               </Typography>
+                               {comment.user_id === selectedSubmission.user_id && (
+                                 <Typography variant="caption" sx={{ backgroundColor: '#00BCD4', color: 'white', px: 0.5, borderRadius: 1, fontSize:'0.6rem' }}>
+                                   작성자
+                                 </Typography>
+                               )}
+                               <Typography variant="caption" color="textSecondary" sx={{ ml: 'auto' }}>
+                                 {new Date(comment.created_at).toLocaleString('ko-KR', {
+                                   year: 'numeric', month: 'numeric', day: 'numeric',
+                                   hour: '2-digit', minute: '2-digit'
+                                 })}
+                               </Typography>
+                             </Box>
+                             {isEditing ? (
+                               <TextField
+                                  fullWidth
+                                  multiline
+                                  value={editedCommentContent}
+                                  onChange={(e) => setEditedCommentContent(e.target.value)}
+                                  variant="outlined"
+                                  size="small"
+                                  sx={{ mt: 1, mb: 1 }}
+                                  error={editedCommentContent.length > 500}
+                                  helperText={`${editedCommentContent.length}/500 ${editedCommentContent.length > 500 ? ' (500자를초과했습니다)' : ''}`}/>
+                              ) : (
+                               <Typography variant="body2" component="div">{parseMentions(comment.content, comment.resolvedMentions)}</Typography>
+                             )}
+                           </Box>
+                           {isAuthor && !isEditing && (
+                             <Box sx={{ ml: 1, display: 'flex', gap: 0.5 }}>
+                               <IconButton size="small" onClick={() => handleEditCommentClick(comment)} color="primary">
+                                 <EditIcon fontSize="small" />
+                               </IconButton>
+                               <IconButton size="small" onClick={() => handleDeleteComment(comment.id)} color="error">
+                                 <DeleteIcon fontSize="small" />
+                               </IconButton>
+                             </Box>
+                           )}
+                         </Box>
+                         {isEditing && (
+                           <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 1 }}>
+                             <Button size="small" variant="outlined" onClick={handleCancelEditComment}>취소</Button>
+                             <Button size="small" variant="contained" onClick={() => handleSaveEditedComment(comment.id)}>저장</Button>
+                           </Box>
+                         )}
+                       </Box>
+                       );
+                     })
+                   )}
               </Box>
 
               <TextField
@@ -577,6 +481,9 @@ const TodayQuest = ({ currentUser }) => {
                 }}
                 multiline
                 maxRows={3}
+                inputProps={{ maxLength: 500 }}
+                error={newComment.length > 500}
+                helperText={`${newComment.length}/500 ${newComment.length > 500 ? ' (500자를 초과했습니다)' : ''}`}
               />
             </DialogContent>
             <DialogActions>

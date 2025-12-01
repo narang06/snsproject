@@ -25,12 +25,21 @@ router.post("/", authMiddleware, async (req, res) => {
 
     await db.query("INSERT INTO follows (follower_id, following_id) VALUES (?, ?)", [userId, targetUserId])
 
-    // 알림 생성
-    await db.query("INSERT INTO notifications (recipient_id, type, sender_id) VALUES (?, ?, ?)", [
-      targetUserId,
-      "follow",
-      userId,
-    ])
+    // 알림 생성 (1분 내 중복 방지)
+    const ONE_MINUTE_AGO = new Date(Date.now() - 60 * 1000);
+    const [existingFollowNotification] = await db.query(
+      `SELECT id FROM notifications
+      WHERE recipient_id = ? AND sender_id = ? AND type = 'follow' AND created_at >= ?`,
+      [targetUserId, userId, ONE_MINUTE_AGO]
+    );
+
+    if (existingFollowNotification.length === 0) {
+      await db.query("INSERT INTO notifications (recipient_id, type, sender_id) VALUES (?, ?, ?)", [
+        targetUserId,
+        "follow",
+        userId,
+      ]);
+    }
 
     res.status(201).json({ message: "팔로우 성공" })
   } catch (err) {

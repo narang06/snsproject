@@ -17,18 +17,19 @@ import FavoriteIcon from "@mui/icons-material/Favorite";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
 import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
-import EditIcon from '@mui/icons-material/Edit'; // Profile.js에서만 필요할 수 있으나, 일단 포함
-import DeleteIcon from '@mui/icons-material/Delete'; // Profile.js에서만 필요할 수 있으나, 일단 포함
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import { parseMentions } from "../utils/mentionParser";
 
 const SubmissionCard = ({
   submission,
-  handleOpenModal,          // 댓글 모달용
-  handleOpenImageModal,     // 이미지 보기 모달용
-  handleLike,               // 좋아요 기능용
-  likedSubmissions,         // 좋아요 상태용
-  currentUserId,            // 현재 로그인 사용자 ID (수정/삭제 권한 확인용)
-  onDeleteSubmission,       // 삭제 기능용 (Profile.js에서만 필요)
-  onEditSubmission,         // 수정 기능용 (Profile.js에서만 필요)
+  handleOpenModal,
+  handleOpenImageModal,
+  handleLike,
+  likedSubmissions,
+  currentUserId,
+  onDeleteSubmission,
+  onEditSubmission,
 }) => {
   const scrollContainerRefLocal = useRef(null);
   const [currentImageIndexLocal, setCurrentImageIndexLocal] = useState(0);
@@ -94,12 +95,12 @@ const SubmissionCard = ({
         action={
           isSubmissionOwner && (onDeleteSubmission || onEditSubmission) ? (
             <>
-              {onEditSubmission && ( // 수정 기능이 필요한 경우에만 버튼 표시
+              {onEditSubmission && (
                 <IconButton aria-label="edit" onClick={() => onEditSubmission(submission)}>
                   <EditIcon />
                 </IconButton>
               )}
-              {onDeleteSubmission && ( // 삭제 기능이 필요한 경우에만 버튼 표시
+              {onDeleteSubmission && (
                 <IconButton aria-label="delete" onClick={() => onDeleteSubmission(submission.id)}>
                   <DeleteIcon />
                 </IconButton>
@@ -188,7 +189,9 @@ const SubmissionCard = ({
         </Box>
       )}
       <CardContent>
-        <Typography variant="body1">{submission.content}</Typography>
+        <Typography variant="body1" component="div">
+          {parseMentions(submission.content, submission.resolvedMentions)}
+        </Typography>
       </CardContent>
       <CardActions>
         <Button

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react" 
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom"
-import { Box, BottomNavigation, BottomNavigationAction } from "@mui/material"
+import { Box, BottomNavigation, BottomNavigationAction, Badge } from "@mui/material"
 import HomeIcon from "@mui/icons-material/Home"
 import AssignmentIcon from "@mui/icons-material/Assignment"
 import PersonIcon from "@mui/icons-material/Person"
@@ -14,6 +14,7 @@ import Login from "./pages/Login"
 import Join from "./pages/Join"
 import Register from "./pages/Register"
 import Home from "./pages/Home"
+import { SubmissionsProvider } from "./contexts/SubmissionsContext";
 import TodayQuest from "./pages/TodayQuest"
 import Profile from "./pages/Profile"
 import Notifications from "./pages/Notifications"
@@ -25,7 +26,7 @@ const ProtectedRoute = ({ children, isAuthenticated }) => {
 }
 
 
-const MainLayout = ({ children, isAuthenticated, currentUser, navValue, setNavValue }) => {
+const MainLayout = ({ children, isAuthenticated, currentUser, navValue, setNavValue, unreadCount }) => {
   const navigate = useNavigate();
 
  
@@ -56,7 +57,14 @@ const MainLayout = ({ children, isAuthenticated, currentUser, navValue, setNavVa
         <BottomNavigationAction label="홈" icon={<HomeIcon />} />
         <BottomNavigationAction label="오늘의 퀘스트" icon={<AssignmentIcon />} />
         <BottomNavigationAction label="제출" icon={<AddCircleOutlineIcon />} />
-        <BottomNavigationAction label="알림" icon={<NotificationsIcon />} />
+        <BottomNavigationAction
+          label="알림"
+          icon={
+            <Badge color="error" variant="dot" invisible={unreadCount === 0}>
+              <NotificationsIcon />
+            </Badge>
+          }
+        />
         <BottomNavigationAction label="프로필" icon={<PersonIcon />} />
       </BottomNavigation>
     </Box>
@@ -71,6 +79,7 @@ function MainAppContent() {
   const [currentUser, setCurrentUser] = useState(null)
   const [loading, setLoading] = useState(true); 
   const [navValue, setNavValue] = useState(0); 
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -97,7 +106,7 @@ function MainAppContent() {
 
   useEffect(() => {
   console.log("isAuthenticated:", isAuthenticated);
-  }, [isAuthenticated]); // 디버깅용
+  }, [isAuthenticated]); 
 
 
 
@@ -138,6 +147,35 @@ function MainAppContent() {
     }
   }, [isAuthenticated, loading, navigate]);
 
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      if (!isAuthenticated) return;
+
+      try {
+        const token = localStorage.getItem("token");
+        const response = await fetch("http://localhost:3010/notifications/unread-count", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await response.json();
+        if (response.ok) {
+          setUnreadCount(data.unreadCount);
+        }
+      } catch (err) {
+        console.error("읽지 않은 알림 개수 조회 실패:", err);
+      }
+    };
+
+    
+    if (isAuthenticated) {
+      fetchUnreadCount(); 
+      const intervalId = setInterval(fetchUnreadCount, 60000); 
+
+      return () => clearInterval(intervalId); 
+    } else {
+      setUnreadCount(0); 
+    }
+  }, [isAuthenticated]); 
+
 
   const handleLogin = (data) => {
     localStorage.setItem("token", data.token)
@@ -166,6 +204,7 @@ function MainAppContent() {
         currentUser={currentUser} 
         navValue={navValue} 
         setNavValue={setNavValue}
+        unreadCount={unreadCount}
       >
         <Routes>
           <Route path="/login" element={!isAuthenticated ? <Login onLogin={handleLogin} /> : <Navigate to="/" />} />
@@ -228,7 +267,9 @@ function MainAppContent() {
 function App() {
   return (
     <Router>
-      <MainAppContent />
+      <SubmissionsProvider>
+        <MainAppContent />
+      </SubmissionsProvider>
     </Router>
   );
 }

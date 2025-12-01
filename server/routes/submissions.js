@@ -5,6 +5,7 @@ import db from "../db.js";
 import authMiddleware from "../auth.js";
 import multer from "multer";
 import path from "path";
+import { addResolvedMentions } from '../utils/mentionUtils.js';
 
 // 파일 업로드 설정
 const storage = multer.diskStorage({
@@ -65,21 +66,23 @@ router.get("/feed", authMiddleware, async (req, res) => {
         u.nickname, u.nickname_tag, u.profile_image_url as userProfileImage,
         q.title as questTitle,
         COUNT(DISTINCT l.user_id) as likeCount,
-        COUNT(DISTINCT c.id) as commentCount
+        COUNT(DISTINCT c.id) as commentCount,
+        MAX(CASE WHEN l_user.user_id = ? THEN 1 ELSE 0 END) AS isLiked
       FROM submissions s
       JOIN users u ON s.user_id = u.id
       JOIN daily_quests dq ON s.daily_quest_id = dq.id
       JOIN quests q ON dq.quest_id = q.id
       LEFT JOIN likes l ON s.id = l.submission_id
       LEFT JOIN comments c ON s.id = c.submission_id
+      LEFT JOIN likes l_user ON s.id = l_user.submission_id AND l_user.user_id = ?
       ${whereClause}
       GROUP BY s.id
       ${orderByClause}
     `;
 
-    const [submissions] = await db.query(sqlQuery, queryParams);
-
-    res.status(200).json(submissions);
+    const [submissions] = await db.query(sqlQuery, [req.user.userId, req.user.userId, ...queryParams]);
+    const submissionsWithMentions = await addResolvedMentions(submissions);
+    res.status(200).json(submissionsWithMentions);
   } catch (err) {
     console.error("피드 조회 오류:", err);
     res.status(500).json({ message: "서버 오류" });
@@ -92,25 +95,28 @@ router.get("/quest/:dailyQuestId", authMiddleware, async (req, res) => {
     const { dailyQuestId } = req.params;
 
     const [submissions] = await db.query(
-      `SELECT 
+      `SELECT
         s.id, s.daily_quest_id, s.user_id, s.content_text as content, s.content_image_url as image_url, s.created_at,
         u.nickname, u.nickname_tag, u.profile_image_url as userProfileImage,
         q.title as questTitle,
         COUNT(DISTINCT l.user_id) as likeCount,
-        COUNT(DISTINCT c.id) as commentCount
+        COUNT(DISTINCT c.id) as commentCount,
+        MAX(CASE WHEN l_user.user_id = ? THEN 1 ELSE 0 END) AS isLiked
        FROM submissions s
        JOIN users u ON s.user_id = u.id
        JOIN daily_quests dq ON s.daily_quest_id = dq.id
        JOIN quests q ON dq.quest_id = q.id
        LEFT JOIN likes l ON s.id = l.submission_id
        LEFT JOIN comments c ON s.id = c.submission_id
+       LEFT JOIN likes l_user ON s.id = l_user.submission_id AND l_user.user_id = ?
        WHERE s.daily_quest_id = ?
        GROUP BY s.id
        ORDER BY s.created_at DESC`,
-      [dailyQuestId]
+      [req.user.userId, dailyQuestId] 
     );
 
-    res.status(200).json(submissions);
+    const submissionsWithMentions = await addResolvedMentions(submissions);
+    res.status(200).json(submissionsWithMentions);
   } catch (err) {
     console.error("제출물 조회 오류:", err);
     res.status(500).json({ message: "서버 오류" });
@@ -123,29 +129,32 @@ router.get("/:submissionId", authMiddleware, async (req, res) => {
     const { submissionId } = req.params;
 
     const sqlQuery = `
-      SELECT
-        s.id, s.daily_quest_id, s.user_id, s.content_text as content, s.content_image_url as image_url, s.created_at,
-        u.nickname, u.nickname_tag, u.profile_image_url as userProfileImage,
-        q.title as questTitle,
-        COUNT(DISTINCT l.user_id) as likeCount,
-        COUNT(DISTINCT c.id) as commentCount
-      FROM submissions s
-      JOIN users u ON s.user_id = u.id
-      JOIN daily_quests dq ON s.daily_quest_id = dq.id
-      JOIN quests q ON dq.quest_id = q.id
-      LEFT JOIN likes l ON s.id = l.submission_id
-      LEFT JOIN comments c ON s.id = c.submission_id
-      WHERE s.id = ?
-      GROUP BY s.id
-    `;
+        SELECT
+          s.id, s.daily_quest_id, s.user_id, s.content_text as content, s.content_image_url as image_url, s.created_at,
+          u.nickname, u.nickname_tag, u.profile_image_url as userProfileImage,
+          q.title as questTitle,
+          COUNT(DISTINCT l.user_id) as likeCount,
+          COUNT(DISTINCT c.id) as commentCount,
+          MAX(CASE WHEN l_user.user_id = ? THEN 1 ELSE 0 END) AS isLiked
+        FROM submissions s
+        JOIN users u ON s.user_id = u.id
+        JOIN daily_quests dq ON s.daily_quest_id = dq.id
+        JOIN quests q ON dq.quest_id = q.id
+        LEFT JOIN likes l ON s.id = l.submission_id
+        LEFT JOIN comments c ON s.id = c.submission_id
+        LEFT JOIN likes l_user ON s.id = l_user.submission_id AND l_user.user_id = ?
+        WHERE s.id = ?
+        GROUP BY s.id
+      `;
 
-    const [submissions] = await db.query(sqlQuery, [submissionId]);
+    const [submissions] = await db.query(sqlQuery, [req.user.userId, req.user.userId, submissionId]);
 
     if (submissions.length === 0) {
       return res.status(404).json({ message: "게시물을 찾을 수 없습니다." });
     }
 
-    res.status(200).json({ submission: submissions[0] });
+    const submissionsWithMentions = await addResolvedMentions(submissions);
+    res.status(200).json({ submission: submissionsWithMentions[0] });
   } catch (err) {
     console.error("단일 제출물 조회 오류:", err);
     res.status(500).json({ message: "서버 오류" });
@@ -179,10 +188,62 @@ router.post("/", authMiddleware, upload.array("images", 5), async (req, res) => 
       return res.status(400).json({ message: "필수 필드를 입력해주세요" });
     }
 
-    await db.query(
+    const result = await db.query(
       "INSERT INTO submissions (daily_quest_id, user_id, content_text, content_image_url) VALUES (?, ?, ?, ?)",
       [dailyQuestId, userId, content, imageUrlsJson]
     );
+    const submissionId = result[0].insertId;
+
+    // --- 언급 알림 생성 로직 ---
+    const recipients = new Set(); // 수신자 ID Set
+
+    // 내용에서 @닉네임#태그 형식으로 언급된 사용자 찾기
+    const mentionRegex = /[@#]([\p{L}\w]+#\d{4})/gu; 
+    const mentionedParts = new Set();
+    let match;
+    while ((match = mentionRegex.exec(content)) !== null) {
+      mentionedParts.add(match[1]); // 예: "test#1234"
+    }
+
+    if (mentionedParts.size > 0) {
+      const queryConditions = [];
+      const queryParams = [];
+      
+      for (const part of mentionedParts) {
+        const [nickname, tag] = part.split('#');
+        if (nickname && tag) {
+          queryConditions.push("(nickname = ? AND nickname_tag = ?)");
+          queryParams.push(nickname, tag);
+        }
+      }
+
+      if (queryConditions.length > 0) {
+        const sql = `SELECT id FROM users WHERE ${queryConditions.join(" OR ")}`;
+        const [mentionedUsers] = await db.query(sql, queryParams);
+
+        for (const mentionedUser of mentionedUsers) {
+          // 게시물 작성자 자신에게는 알림을 보내지 않음
+          if (mentionedUser.id !== userId) {
+            recipients.add(mentionedUser.id);
+          }
+        }
+      }
+    }
+
+    // 수집된 모든 수신자에게 'mention' 알림 발송
+    for (const recipientId of recipients) {
+      await db.query(
+        "INSERT INTO notifications (recipient_id, sender_id, type, target_type, target_id) VALUES (?, ?, ?, ?, ?)",
+        [
+          recipientId,
+          userId,
+          "mention",
+          "SUBMISSION",
+          submissionId,
+        ]
+      );
+    }
+    // --- 언급 알림 로직 종료 ---
 
     res.status(201).json({ message: "제출 성공" });
   } catch (err) {

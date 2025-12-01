@@ -35,106 +35,30 @@ import SubmissionCard from '../components/SubmissionCard';
 import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { ko } from 'date-fns/locale';
-import { format } from 'date-fns'; 
+import { format } from 'date-fns';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { parseMentions } from "../utils/mentionParser";
+import { useSubmissions } from '../contexts/SubmissionsContext'; 
 
 const Home = ({ currentUser }) => {
-  const [submissions, setSubmissions] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [openModal, setOpenModal] = useState(false)
-  const [selectedSubmission, setSelectedSubmission] = useState(null)
-  const [comments, setComments] = useState([])
-  const [newComment, setNewComment] = useState("")
-  const [likedSubmissions, setLikedSubmissions] = useState(new Set())
+  const { submissions, fetchSubmissions, likedSubmissions, handleLikeInContext, updateSubmissionCommentCount } = useSubmissions();
+  const [loading, setLoading] = useState(true); 
+  const [openModal, setOpenModal] = useState(false);
+  const [selectedSubmission, setSelectedSubmission] = useState(null);
+  const [comments, setComments] = useState([]);
+  const [newComment, setNewComment] = useState("");
   const [imageModalOpen, setImageModalOpen] = useState(false);
-  const [selectedImageForModal, setSelectedImageForModal] = useState(null)
-  const [latestAuthorComment, setLatestAuthorComment] = useState(null)
-  const [selectedDate, setSelectedDate] = useState(null)
-  const [searchQuery, setSearchQuery] = useState("") 
-  const [sortOrder, setSortOrder] = useState("latest")
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('')
-  const [highlightedCommentId, setHighlightedCommentId] = useState(null)
-  const [editingCommentId, setEditingCommentId] = useState(null)
-  const [editedCommentContent, setEditedCommentContent] = useState("")
+  const [selectedImageForModal, setSelectedImageForModal] = useState(null);
+  const [latestAuthorComment, setLatestAuthorComment] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortOrder, setSortOrder] = useState("latest");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const [highlightedCommentId, setHighlightedCommentId] = useState(null);
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editedCommentContent, setEditedCommentContent] = useState("");
   const location = useLocation();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    // 500ms(0.5초) 후에 검색어가 debouncedSearchQuery에 저장되도록 타이머 설정
-    const handler = setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery);
-    }, 500);
-
-    // 사용자가 계속 타이핑하면 이전 타이머를 취소하고 새 타이머를 시작
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [searchQuery]); // searchQuery가 바뀔 때마다 이 effect가 실행됩니다.
-
-  useEffect(() => {
-    fetchSubmissions(selectedDate, debouncedSearchQuery, sortOrder);
-  }, [selectedDate, debouncedSearchQuery, sortOrder])
-
-  useEffect(() => {
-    const queryParams = new URLSearchParams(location.search);
-    const openSubmissionId = queryParams.get('openSubmission');
-    const highlightCommentId = queryParams.get('highlightComment');
-
-    if (openSubmissionId) {
-      const fetchAndOpenSubmission = async () => {
-        try {
-          const token = localStorage.getItem("token");
-          const response = await fetch(`http://localhost:3010/submissions/${openSubmissionId}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          const data = await response.json();
-          if (response.ok && data.submission) {
-            handleOpenModal(data.submission, highlightCommentId);
-          } else {
-            console.error("게시물 로드 실패:", data.message || "게시물을 찾을 수 없습니다.");
-          }
-        } catch (error) {
-          console.error("게시물 로드 중 오류 발생:", error);
-        } finally {
-          navigate(location.pathname, { replace: true });
-        }
-      };
-      fetchAndOpenSubmission();
-    }
-    }, [location.search, navigate, currentUser ]); 
-  const fetchSubmissions = async (date, query, sort) => {
-    setLoading(true);
-    try {
-      const token = localStorage.getItem("token")
-      const queryParams = new URLSearchParams();
-      if (date) {
-        queryParams.append('date', format(date, 'yyyy-MM-dd'));
-      }
-      if (query) {
-        queryParams.append('query', query);
-      }
-      queryParams.append('sort', sort); 
-
-      const response = await fetch(`http://localhost:3010/submissions/feed?${queryParams.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-
-      const data = await response.json()
-      if (response.ok) {
-        setSubmissions(data)
-      } else {
-        if(response.status !== 404) {
-            alert(data.message || '피드를 불러오는 데 실패했습니다.');
-        }
-        setSubmissions([]); 
-      }
-    } catch (err) {
-      console.error("피드 로드 실패:", err)
-      setSubmissions([]);
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleOpenModal = useCallback(async (submission, highlightCommentId = null) => {
     setSelectedSubmission(submission)
@@ -180,6 +104,66 @@ const Home = ({ currentUser }) => {
     }
   }, [setOpenModal, setSelectedSubmission, setComments, setHighlightedCommentId, setLatestAuthorComment]);
 
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 500);
+
+    // 사용자가 계속 타이핑하면 이전 타이머를 취소하고 새 타이머를 시작
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [searchQuery]); // searchQuery가 바뀔 때마다 이 effect가 실행됩니다.
+
+  const fetchSubmissionsWithLoading = useCallback(async (date, query, sort) => {
+    setLoading(true);
+    await fetchSubmissions(date, query, sort);
+    setLoading(false);
+  }, [fetchSubmissions]);
+
+  useEffect(() => {
+    console.log('[Home.js] Fetching submissions with:', { selectedDate, debouncedSearchQuery, sortOrder }); // Added console.log
+    fetchSubmissionsWithLoading(selectedDate, debouncedSearchQuery, sortOrder);
+  }, [selectedDate, debouncedSearchQuery, sortOrder, fetchSubmissionsWithLoading]);
+
+  useEffect(() => {
+    const queryParams = new URLSearchParams(location.search);
+    const openSubmissionId = queryParams.get('openSubmission');
+    const highlightCommentId = queryParams.get('highlightComment');
+
+    if (openSubmissionId) {
+      const findAndOpenSubmission = async () => {
+        // submissions가 Context에서 관리되므로, 여기서는 submissions 배열에서 찾음
+        const submissionToOpen = submissions.find(s => s.id === parseInt(openSubmissionId));
+        if (submissionToOpen) {
+          handleOpenModal(submissionToOpen, highlightCommentId);
+        } else {
+          // submissions 배열에 없을 경우 (예: 페이지 새로고침 등), 서버에서 직접 가져와야 함 (예외 처리)
+          try {
+            const token = localStorage.getItem("token");
+            const response = await fetch(`http://localhost:3010/submissions/${openSubmissionId}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            const data = await response.json();
+            if (response.ok && data.submission) {
+              handleOpenModal(data.submission, highlightCommentId);
+            } else {
+              console.error("게시물 로드 실패:", data.message || "게시물을 찾을 수 없습니다.");
+            }
+          } catch (error) {
+            console.error("게시물 로드 중 오류 발생:", error);
+          }
+        }
+        navigate(location.pathname, { replace: true });
+      };
+      // submissions가 로드된 후에만 실행되도록 종속성 배열에 submissions 추가
+      // 또는 submissions 로딩 상태를 확인
+      if (submissions.length > 0 || !loading) { // submissions가 로드되었거나, 초기 로딩이 끝났으면
+        findAndOpenSubmission();
+      }
+    }
+    }, [location.search, currentUser, submissions, loading ]); 
+
   const handleCloseModal = () => {
     setOpenModal(false)
     setSelectedSubmission(null)
@@ -210,6 +194,8 @@ const Home = ({ currentUser }) => {
         setComments(updatedComments);
         setNewComment("");
 
+        updateSubmissionCommentCount(selectedSubmission.id, 1);
+
         const postAuthorId = selectedSubmission.user_id;
         if (data.user_id === postAuthorId) {
           if (!latestAuthorComment || new Date(data.created_at) > new Date(latestAuthorComment.created_at)) {
@@ -222,44 +208,7 @@ const Home = ({ currentUser }) => {
     }
   }
 
-  const handleLike = async (submission) => {
-    try {
-      const token = localStorage.getItem("token")
-      const isLiked = likedSubmissions.has(submission.id)
-
-      const response = await fetch("http://localhost:3010/likes", {
-        method: isLiked ? "DELETE" : "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ submissionId: submission.id }),
-      })
-
-      if (response.ok) {
-        const newLiked = new Set(likedSubmissions)
-        if (isLiked) {
-          newLiked.delete(submission.id)
-        } else {
-          newLiked.add(submission.id)
-        }
-        setLikedSubmissions(newLiked)
-
-        setSubmissions(
-          submissions.map((s) =>
-            s.id === submission.id
-              ? {
-                  ...s,
-                  likeCount: isLiked ? s.likeCount - 1 : s.likeCount + 1,
-                }
-              : s,
-          ),
-        )
-      }
-    } catch (err) {
-      console.error("좋아요 실패:", err)
-    }
-  }
+  const handleLike = handleLikeInContext;
 
   const handleOpenImageModal = (imageUrl) => {
     setSelectedImageForModal(imageUrl);
@@ -288,6 +237,12 @@ const Home = ({ currentUser }) => {
         return;
       }
       setComments(comments.filter(comment => comment.id !== commentId));
+      updateSubmissionCommentCount(selectedSubmission.id, -1);
+
+      if (latestAuthorComment && latestAuthorComment.id === commentId) {
+        setLatestAuthorComment(null);
+      }
+
       alert("댓글이 삭제되었습니다.");
     } catch (err) {
       console.error("댓글 삭제 오류:", err);
@@ -419,9 +374,9 @@ const Home = ({ currentUser }) => {
               submission={submission}
               handleOpenModal={handleOpenModal}         
               handleOpenImageModal={handleOpenImageModal} 
-              handleLike={handleLike}                  
-              likedSubmissions={likedSubmissions}     
-              currentUserId={currentUser?.userId}       
+              handleLike={handleLikeInContext}
+              likedSubmissions={likedSubmissions}
+              currentUserId={currentUser?.userId}      
             />
           ))
         )}
@@ -480,7 +435,7 @@ const Home = ({ currentUser }) => {
                     </Typography>
                   ) : (
                     comments.map((comment) => {
-                      const isAuthor = comment.user_id === selectedSubmission.user_id;
+                      const isAuthor = comment.user_id === currentUser?.userId;
                       const isHighlighted = highlightedCommentId && (highlightedCommentId == comment.id);
                       const isEditing = editingCommentId === comment.id;
                       return (
@@ -532,7 +487,7 @@ const Home = ({ currentUser }) => {
                                 helperText={`${editedCommentContent.length}/500 ${editedCommentContent.length > 500 ? ' (500자를초과했습니다)' : ''}`}
                               />
                             ) : (
-                              <Typography variant="body2">{comment.content}</Typography>
+                              <Typography variant="body2" component="div">{parseMentions(comment.content, comment.resolvedMentions)}</Typography>
                             )}
                           </Box>
                           {isAuthor && !isEditing && ( 
@@ -571,6 +526,9 @@ const Home = ({ currentUser }) => {
                   }}
                   multiline
                   maxRows={3}
+                  inputProps={{ maxLength: 500 }}
+                  error={newComment.length > 500}
+                  helperText={`${newComment.length}/500 ${newComment.length > 500 ? ' (500자를 초과했습니다)' : ''}`}
                 />
               </DialogContent>
               <DialogActions>

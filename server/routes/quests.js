@@ -1,6 +1,7 @@
 import express from "express";
 import db from "../db.js";
 import authMiddleware from "../auth.js";
+import { addResolvedMentions } from '../utils/mentionUtils.js';
 
 const router = express.Router();
 
@@ -87,12 +88,14 @@ router.get("/today", authMiddleware, async (req, res) => {
       [dailyQuestId, userId]
     );
 
+    const submissionsWithMentions = await addResolvedMentions(submissions);
+
     res.status(200).json({
       quest: {
         ...quests[0],
         dailyQuestId: dailyQuestId
       },
-      submissions: submissions.map((s) => ({
+      submissions: submissionsWithMentions.map((s) => ({
         ...s,
         questTitle: quests[0].title,
         userProfileImage: s.profile_image,

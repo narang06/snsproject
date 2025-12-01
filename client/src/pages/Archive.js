@@ -308,6 +308,9 @@ const Archive = ({ currentUser }) => {
                 }}
                 multiline
                 maxRows={3}
+                inputProps={{ maxLength: 500 }}
+                error={newComment.length > 500}
+                helperText={`${newComment.length}/500 ${newComment.length > 500 ? ' (500자를 초과했습니다)' : ''}`}
               />
             </DialogContent>
             <DialogActions>

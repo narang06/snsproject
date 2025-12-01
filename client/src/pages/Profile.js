@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
 import {
   Container,
@@ -31,37 +31,40 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import CloseIcon from '@mui/icons-material/Close';
 import SubmissionCard from '../components/SubmissionCard';
 import UserListDialog from '../components/UserListDialog';
+import { parseMentions } from "../utils/mentionParser";
+import { useSubmissions } from '../contexts/SubmissionsContext';
 
 const Profile = ({ currentUser, onLogout }) => {
+  const { submissions, setSubmissions, likedSubmissions, setLikedSubmissions, handleLikeInContext, updateSubmissionCommentCount } = useSubmissions();
   const { userId } = useParams()
-  const navigate = useNavigate()
-  const profileImageInputRef = useRef(null)
-  const editImageInputRef = useRef(null)
-  const [user, setUser] = useState(null) 
-  const [submissions, setSubmissions] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [isFollowing, setIsFollowing] = useState(false)
-  const [openModal, setOpenModal] = useState(false)
-  const [selectedSubmission, setSelectedSubmission] = useState(null)
-  const [comments, setComments] = useState([])
-  const [newComment, setNewComment] = useState("")
-  const [likedSubmissions, setLikedSubmissions] = useState(new Set())
-  const [isEditingBio, setIsEditingBio] = useState(false);
-  const [bioInput, setBioInput] = useState(user?.bio || "")
-  const [isEditingProfileImage, setIsEditingProfileImage] = useState(false);
-  const [profileImageFile, setProfileImageFile] = useState(null)
-  const [profileImagePreview, setProfileImagePreview] = useState(null)
-  const [editModalOpen, setEditModalOpen] = useState(false)
-  const [submissionToEdit, setSubmissionToEdit] = useState(null)
-  const [editedContent, setEditedContent] = useState("")
-  const [editingImages, setEditingImages] = useState([])
-  const [selectedImageForModal, setSelectedImageForModal] = useState(null)
-  const [imageModalOpen, setImageModalOpen] = useState(false)
-  const [latestAuthorComment, setLatestAuthorComment] = useState(null)
-  const [isListDialogOpen, setIsListDialogOpen] = useState(false)
-  const [dialogTitle, setDialogTitle] = useState('')
-  const [userList, setUserList] = useState([])
-  const [isListLoading, setIsListLoading] = useState(false)
+const navigate = useNavigate()
+const profileImageInputRef = useRef(null)
+const editImageInputRef = useRef(null)
+const [user, setUser] = useState(null)
+const [loading, setLoading] = useState(true)
+const [isFollowing, setIsFollowing] = useState(false)
+const [openModal, setOpenModal] = useState(false)
+const [selectedSubmission, setSelectedSubmission] = useState(null)
+const [comments, setComments] = useState([])
+const [newComment, setNewComment] = useState("")
+const [isEditingBio, setIsEditingBio] = useState(false);
+const [bioInput, setBioInput] = useState(user?.bio || "")
+const [isEditingProfileImage, setIsEditingProfileImage] = useState(false);
+const [profileImageFile, setProfileImageFile] = useState(null)
+const [profileImagePreview, setProfileImagePreview] = useState(null)
+const [editModalOpen, setEditModalOpen] = useState(false)
+const [submissionToEdit, setSubmissionToEdit] = useState(null)
+const [editedContent, setEditedContent] = useState("")
+const [editingImages, setEditingImages] = useState([])
+const [selectedImageForModal, setSelectedImageForModal] = useState(null)
+const [imageModalOpen, setImageModalOpen] = useState(false)
+const [latestAuthorComment, setLatestAuthorComment] = useState(null)
+const [isListDialogOpen, setIsListDialogOpen] = useState(false)
+const [dialogTitle, setDialogTitle] = useState('')
+const [userList, setUserList] = useState([])
+const [isListLoading, setIsListLoading] = useState(false)
+const [editingCommentId, setEditingCommentId] = useState(null); 
+const [editedCommentContent, setEditedCommentContent] = useState(""); 
 
   const handleOpenEditModal = (submission) => {
     setSubmissionToEdit(submission);
@@ -142,9 +145,11 @@ const Profile = ({ currentUser, onLogout }) => {
       const updatedSubmission = await response.json();
 
       // 5. Update UI
-      setSubmissions(submissions.map(s =>
-        s.id === submissionToEdit.id ? { ...s, content: updatedSubmission.content, image_url: updatedSubmission.image_url } : s
-      ));
+      setSubmissions(prevSubmissions =>
+        prevSubmissions.map(s =>
+          s.id === submissionToEdit.id ? { ...s, content: updatedSubmission.content, image_url: updatedSubmission.image_url } : s
+        )
+      );
 
       handleCloseEditModal();
       alert("게시물이 수정되었습니다.");
@@ -302,11 +307,7 @@ const Profile = ({ currentUser, onLogout }) => {
     }
   };
 
-  useEffect(() => {
-    fetchUserProfile()
-  }, [userId])
-
-  const fetchUserProfile = async () => {
+  const fetchUserProfile = useCallback(async () => {
     try {
       const token = localStorage.getItem("token")
       const response = await fetch(`http://localhost:3010/users/${userId}`, {
@@ -315,20 +316,26 @@ const Profile = ({ currentUser, onLogout }) => {
 
       if (!response.ok) {
         if (response.status === 401) {
-          onLogout(); 
+          onLogout();
         }
-        return; 
+        return;
       }
       const data = await response.json()
       setUser(data.user)
       setSubmissions(data.submissions)
       setIsFollowing(data.isFollowing)
+      const likedIds = new Set(data.submissions.filter(s => s.isLiked).map(s => s.id));
+      setLikedSubmissions(likedIds);
     } catch (err) {
       console.error("프로필 로드 실패:", err)
     } finally {
       setLoading(false)
     }
-  }
+  }, [userId, onLogout, setSubmissions, setLikedSubmissions]); 
+
+  useEffect(() => {
+    fetchUserProfile()
+  }, [fetchUserProfile])
 
   const handleFollow = async () => {
     try {
@@ -445,15 +452,15 @@ const Profile = ({ currentUser, onLogout }) => {
 
       const data = await response.json()
       if (response.ok) {
-        
         const updatedComments = [...comments, data].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
         setComments(updatedComments);
         setNewComment("");
 
+        updateSubmissionCommentCount(selectedSubmission.id, 1);
         const postAuthorId = selectedSubmission.user_id;
         if (data.user_id === postAuthorId) {
           if (!latestAuthorComment || new Date(data.created_at) > new Date(latestAuthorComment.created_at)) {
-            setLatestAuthorComment(data); 
+            setLatestAuthorComment(data);
           }
         }
       }
@@ -462,44 +469,77 @@ const Profile = ({ currentUser, onLogout }) => {
     }
   }
 
-  const handleLike = async (submission) => {
+  const handleDeleteComment = async (commentId) => {
+    if (!window.confirm("정말로 이 댓글을 삭제하시겠습니까?")) {
+      return;
+    }
     try {
-      const token = localStorage.getItem("token")
-      const isLiked = likedSubmissions.has(submission.id)
+      const token = localStorage.getItem("token");
+      const response = await fetch(`http://localhost:3010/comments/${commentId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-      const response = await fetch("http://localhost:3010/likes", {
-        method: isLiked ? "DELETE" : "POST",
+      if (!response.ok) {
+        const data = await response.json();
+        alert(data.message || "댓글 삭제 실패");
+        return;
+      }
+      setComments(comments.filter(comment => comment.id !== commentId));
+      updateSubmissionCommentCount(selectedSubmission.id, -1);
+
+      if (latestAuthorComment && latestAuthorComment.id === commentId) {
+        setLatestAuthorComment(null);
+      }
+
+      alert("댓글이 삭제되었습니다.");
+    } catch (err) {
+      console.error("댓글 삭제 오류:", err);
+      alert("서버 연결 오류");
+    }
+  };
+
+  const handleEditCommentClick = (comment) => {
+    setEditingCommentId(comment.id);
+    setEditedCommentContent(comment.content);
+  };
+
+  const handleCancelEditComment = () => {
+    setEditingCommentId(null);
+    setEditedCommentContent("");
+  };
+
+  const handleSaveEditedComment = async (commentId) => {
+    if (editedCommentContent.trim().length < 1 || editedCommentContent.trim().length > 500) {
+      alert("댓글 내용은 1자 이상 500자 이하로 입력해주세요.");
+      return;
+    }
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`http://localhost:3010/comments/${commentId}`, {
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ submissionId: submission.id }),
-      })
+        body: JSON.stringify({ content: editedCommentContent }),
+      });
 
-      if (response.ok) {
-        const newLiked = new Set(likedSubmissions)
-        if (isLiked) {
-          newLiked.delete(submission.id)
-        } else {
-          newLiked.add(submission.id)
-        }
-        setLikedSubmissions(newLiked)
-
-        setSubmissions(
-          submissions.map((s) =>
-            s.id === submission.id
-              ? {
-                  ...s,
-                  likeCount: isLiked ? s.likeCount - 1 : s.likeCount + 1,
-                }
-              : s,
-          ),
-        )
+      if (!response.ok) {
+        const data = await response.json();
+        alert(data.message || "댓글 수정 실패");
+        return;
       }
+      const updatedComment = await response.json();
+      setComments(comments.map(comment => comment.id === commentId ? updatedComment : comment));
+      handleCancelEditComment();
+      alert("댓글이 수정되었습니다.");
     } catch (err) {
-      console.error("좋아요 실패:", err)
+      console.error("댓글 수정 오류:", err);
+      alert("서버 연결 오류");
     }
-  }
+  };
+
 
   const handleDeleteSubmission = async (submissionId) => {
     if (!window.confirm("정말로 이 게시물을 삭제하시겠습니까?")) {
@@ -723,7 +763,7 @@ const Profile = ({ currentUser, onLogout }) => {
             submission={submission}
             handleOpenModal={handleOpenModal}
             handleOpenImageModal={handleOpenImageModal} 
-            handleLike={handleLike}                
+            handleLike={handleLikeInContext}                
             likedSubmissions={likedSubmissions}       
             currentUserId={currentUser?.userId}       
             onDeleteSubmission={handleDeleteSubmission} 
@@ -785,35 +825,74 @@ const Profile = ({ currentUser, onLogout }) => {
                   </Typography>
                 ) : (
                   comments.map((comment) => {
-                    // 고정된 댓글은 일반 목록에서도 렌더링
-                    const isAuthor = comment.user_id === selectedSubmission.user_id;
-                    return (
-                      <Box key={comment.id} sx={{ display: 'flex', alignItems: 'flex-start', marginBottom: 2, p: 1, borderRadius: 1, backgroundColor: isAuthor ? '#F3F4F6' : 'transparent' }}>
-                        <Link to={`/profile/${comment.user_id}`} onClick={handleCloseModal}>
-                          <Avatar src={comment.profile_image_url} alt={comment.nickname} sx={{ width: 30, height: 30, marginRight: 1 }} />
-                        </Link>
-                        <Box sx={{ flexGrow: 1 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
-                              {comment.nickname}
-                            </Typography>
-                            {isAuthor && (
-                              <Typography variant="caption" sx={{ backgroundColor: '#6366F1', color: 'white', px: 0.5, borderRadius: 1, fontSize: '0.6rem' }}>
-                                작성자
-                              </Typography>
-                            )}
-                            <Typography variant="caption" color="textSecondary" sx={{ ml: 'auto' }}>
-                              {new Date(comment.created_at).toLocaleString('ko-KR', {
-                                year: 'numeric', month: 'numeric', day: 'numeric',
-                                hour: '2-digit', minute: '2-digit'
-                              })}
-                            </Typography>
-                          </Box>
-                          <Typography variant="body2">{comment.content}</Typography>
-                        </Box>
-                      </Box>
-                    );
-                  })
+                    const isAuthor = comment.user_id === currentUser?.userId;
+                      const isEditing = editingCommentId === comment.id;
+                      return (
+                        <Box
+                          key={comment.id}
+                          id={`comment-${comment.id}`}
+                          sx={{
+                            display: 'flex',
+                             flexDirection: 'column',
+                             marginBottom: 2,
+                             p: 1,
+                             borderRadius: 1,
+                             backgroundColor: isAuthor ? '#F3F4F6' : 'transparent',
+                           }}>
+                           <Box sx={{ display: 'flex', alignItems: 'flex-start', width: '100%' }}>
+                             <Link to={`/profile/${comment.user_id}`} onClick={handleCloseModal}>
+                               <Avatar src={comment.profile_image_url} alt={comment.nickname} sx={{ width: 30, height: 30, marginRight: 1 }} />
+                             </Link>
+                           <Box sx={{ flexGrow: 1 }}>
+                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                               <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                                 {comment.nickname}
+                               </Typography>
+                               {comment.user_id === selectedSubmission.user_id && (
+                                 <Typography variant="caption" sx={{ backgroundColor: '#00BCD4', color: 'white', px: 0.5, borderRadius: 1, fontSize: '0.6rem' }}>
+                                   작성자
+                                 </Typography>
+                               )}
+                               <Typography variant="caption" color="textSecondary" sx={{ ml: 'auto' }}>
+                                 {new Date(comment.created_at).toLocaleString('ko-KR')}
+                               </Typography>
+                             </Box>
+                             {isEditing ? (
+                               <TextField
+                                 fullWidth
+                                 multiline
+                                 value={editedCommentContent}
+                                 onChange={(e) => setEditedCommentContent(e.target.value)}
+                                 variant="outlined"
+                                 size="small"
+                                 sx={{ mt: 1, mb: 1 }}
+                                 error={editedCommentContent.length > 500}
+                                 helperText={`${editedCommentContent.length}/500`}
+                               />
+                             ) : (
+                               <Typography variant="body2" component="div">{parseMentions(comment.content, comment.resolvedMentions)}</Typography>
+                             )}
+                           </Box>
+                           {isAuthor && !isEditing && (
+                             <Box sx={{ ml: 1, display: 'flex', gap: 0.5 }}>
+                               <IconButton size="small" onClick={() => handleEditCommentClick(comment)} color="primary">
+                                 <EditIcon fontSize="small" />
+                               </IconButton>
+                               <IconButton size="small" onClick={() => handleDeleteComment(comment.id)} color="error">
+                                 <DeleteIcon fontSize="small" />
+                               </IconButton>
+                             </Box>
+                           )}
+                         </Box>
+                         {isEditing && (
+                           <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 1 }}>
+                             <Button size="small" variant="outlined" onClick={handleCancelEditComment}>취소</Button>
+                             <Button size="small" variant="contained" onClick={() => handleSaveEditedComment(comment.id)}>저장</Button>
+                           </Box>
+                         )}
+                       </Box>
+                       );
+                     })   
                 )}
               </Box>
 
@@ -830,6 +909,9 @@ const Profile = ({ currentUser, onLogout }) => {
                 }}
                 multiline
                 maxRows={3}
+                inputProps={{ maxLength: 500 }}
+                error={newComment.length > 500}
+                helperText={`${newComment.length}/500 ${newComment.length > 500 ? ' (500자를 초과했습니다)' : ''}`}
               />
             </DialogContent>
             <DialogActions>
