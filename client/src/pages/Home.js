@@ -4,11 +4,6 @@ import { useState, useEffect, useCallback } from "react"
 import { Link } from 'react-router-dom';
 import {
   Container,
-  Card,
-  CardHeader,
-  CardContent,
-  CardMedia,
-  CardActions,
   Avatar,
   Typography,
   Button,
@@ -26,16 +21,12 @@ import {
   Stack,
   IconButton
 } from "@mui/material"
-import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder"
-import FavoriteIcon from "@mui/icons-material/Favorite"
-import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline"
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SubmissionCard from '../components/SubmissionCard';
 import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { ko } from 'date-fns/locale';
-import { format } from 'date-fns';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { parseMentions } from "../utils/mentionParser";
 import { useSubmissions } from '../contexts/SubmissionsContext'; 

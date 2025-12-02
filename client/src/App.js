@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react" 
+import { useState, useEffect, useRef, useCallback } from "react" 
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom"
 import { Box, BottomNavigation, BottomNavigationAction, Badge } from "@mui/material"
 import HomeIcon from "@mui/icons-material/Home"
@@ -144,34 +144,33 @@ function MainAppContent() {
     }
   }, [isAuthenticated, loading, navigate]);
 
-  useEffect(() => {
-    const fetchUnreadCount = async () => {
-      if (!isAuthenticated) return;
+  const fetchUnreadCount = useCallback(async () => {
+    if (!isAuthenticated) return;
 
-      try {
-        const token = localStorage.getItem("token");
-        const response = await fetch("http://localhost:3010/notifications/unread-count", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await response.json();
-        if (response.ok) {
-          setUnreadCount(data.unreadCount);
-        }
-      } catch (err) {
-        console.error("읽지 않은 알림 개수 조회 실패:", err);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch("http://localhost:3010/notifications/unread-count", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setUnreadCount(data.unreadCount);
       }
-    };
-
-    
-    if (isAuthenticated) {
-      fetchUnreadCount(); 
-      const intervalId = setInterval(fetchUnreadCount, 60000); 
-
-      return () => clearInterval(intervalId); 
-    } else {
-      setUnreadCount(0); 
+    } catch (err) {
+      console.error("읽지 않은 알림 개수 조회 실패:", err);
     }
-  }, [isAuthenticated]); 
+  }, [isAuthenticated]); // isAuthenticated를 의존성 배열에 추가
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchUnreadCount();
+      const intervalId = setInterval(fetchUnreadCount, 60000);
+
+      return () => clearInterval(intervalId);
+    } else {
+      setUnreadCount(0);
+    }
+  }, [isAuthenticated, fetchUnreadCount]); 
 
 
   const handleLogin = (data) => {
@@ -236,7 +235,7 @@ function MainAppContent() {
             path="/notifications"
             element={
               <ProtectedRoute isAuthenticated={isAuthenticated}>
-                <Notifications currentUser={currentUser} />
+                <Notifications currentUser={currentUser} onUpdateUnreadCount={fetchUnreadCount} />
               </ProtectedRoute>
             }
           />

@@ -23,9 +23,6 @@ import {
   LinearProgress,
   IconButton,
 } from "@mui/material"
-import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder"
-import FavoriteIcon from "@mui/icons-material/Favorite"
-import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline"
 import SubmissionCard from '../components/SubmissionCard';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
@@ -47,6 +44,8 @@ const TodayQuest = ({ currentUser }) => {
   const [latestAuthorComment, setLatestAuthorComment] = useState(null);
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editedCommentContent, setEditedCommentContent] = useState("");
+  const commentsEndRef = useRef(null);
+
 
   useEffect(() => {
     fetchTodayQuest()
@@ -170,6 +169,7 @@ const TodayQuest = ({ currentUser }) => {
         const updatedComments = [...comments, data].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
         setComments(updatedComments);
         setNewComment("");
+        commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
 
           updateSubmissionCommentCount(selectedSubmission.id, 1); // 댓글 수 1 증가
 
@@ -182,7 +182,7 @@ const TodayQuest = ({ currentUser }) => {
       }
     } catch (err) {
       console.error("댓글 작성 실패:", err)
-    }
+    } 
   }
 
   const handleLike = handleLikeInContext;
@@ -287,7 +287,14 @@ const TodayQuest = ({ currentUser }) => {
 
   return (
     <Container maxWidth="sm" sx={{ paddingTop: 2 }}>
-      <Card sx={{ marginBottom: 3, backgroundColor: "#6366F1", color: "white" }}>
+      <Card sx={{
+        marginBottom: 3,
+        borderRadius: 3,
+        boxShadow: 3,
+        background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)',
+        color: "white",
+        p: 2,
+      }}>
         <CardContent>
           <Typography variant="h5" sx={{ fontWeight: "bold", marginBottom: 1 }}>
             오늘의 퀘스트
@@ -298,15 +305,15 @@ const TodayQuest = ({ currentUser }) => {
           <Typography variant="body2" sx={{ marginBottom: 2, opacity: 0.9 }}>
             {quest.description}
           </Typography>
-          <Box sx={{ marginBottom: 1 }}>
+          <Box>
             <Typography variant="caption">{timeLeft}</Typography>
             <LinearProgress
               variant="determinate"
               value={progressValue}
               sx={{ 
-                marginTop: 1, 
-                height: 10,
-                borderRadius: 5,
+                mt: 1, 
+                height: 12,
+                borderRadius: 6,
                 backgroundColor: "rgba(255,255,255,0.3)",
                 "& .MuiLinearProgress-bar": {
                   backgroundColor: progressValue > 50 ? "#4ade80" 
@@ -319,30 +326,44 @@ const TodayQuest = ({ currentUser }) => {
         </CardContent>
       </Card>
 
-      <Typography variant="h6" sx={{ marginBottom: 2, fontWeight: "bold" }}>
+      <Typography variant="h6" sx={{ fontWeight: "bold", mb: 2 }}>
         제출물 ({submissions.length})
       </Typography>
 
       {submissions.length === 0 ? (
-        <Typography sx={{ textAlign: "center", marginTop: 4 }}>아직 제출된 게시물이 없습니다</Typography>
+        <Typography sx={{ textAlign: "center", mt: 4, color: "text.secondary" }}>
+          아직 제출된 게시물이 없습니다
+        </Typography>
       ) : (
-        submissions.map((submission) => (
-          <SubmissionCard
-            key={submission.id}
-            submission={submission}
-            handleOpenModal={handleOpenModal}
-            handleOpenImageModal={handleOpenImageModal}
-            handleLike={handleLikeInContext}
-            likedSubmissions={likedSubmissions}
-            currentUserId={currentUser?.userId}
-          />
-        ))
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          {submissions.map((submission) => (
+            <SubmissionCard
+              key={submission.id}
+              submission={submission}
+              handleOpenModal={handleOpenModal}
+              handleOpenImageModal={handleOpenImageModal}
+              handleLike={handleLikeInContext}
+              likedSubmissions={likedSubmissions}
+              currentUserId={currentUser?.userId}
+            />
+          ))}
+        </Box>
       )}
 
       <Dialog open={openModal} onClose={handleCloseModal} maxWidth="sm" fullWidth>
         {selectedSubmission && (
           <>
-            <DialogTitle>{selectedSubmission.nickname}님의 게시물</DialogTitle>
+            <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Avatar src={`http://localhost:3010${selectedSubmission.userProfileImage}`} sx={{ width: 30, height: 30 }} />
+              <Box>
+                <Typography variant="subtitle1" sx={{ fontWeight: "bold" }}>
+                  {selectedSubmission.nickname}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {new Date(selectedSubmission.created_at).toLocaleString('ko-KR')}
+                </Typography>
+              </Box>
+            </DialogTitle>
             <DialogContent>
               {selectedSubmission.imageUrl && (
                 <Box
@@ -362,24 +383,17 @@ const TodayQuest = ({ currentUser }) => {
                 댓글 ({comments.length})
               </Typography>
 
-              <Box sx={{ maxHeight: 300, overflowY: "auto", marginBottom: 2 }}>
+              <Box sx={{ maxHeight: 300, overflowY: "auto", display: "flex", flexDirection: "column", gap: 1, mb: 2 }}>
                 {latestAuthorComment && (
                   <Box sx={{ borderBottom: '1px dashed #ccc', pb: 1, mb: 2 }}>
                     <Box sx={{ display: 'flex', alignItems: 'flex-start', p: 1, borderRadius: 1, backgroundColor: '#E0F2F7', border: '1px solid #B2EBF2' }}>
-                      <Avatar src={latestAuthorComment.profile_image_url} alt={latestAuthorComment.nickname} sx={{ width: 30, height: 30, marginRight: 1 }} />
+                      <Avatar src={latestAuthorComment.profile_image_url} alt={latestAuthorComment.nickname} sx={{ width: 30, height: 30, mr: 1 }} />
                       <Box sx={{ flexGrow: 1 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
-                            {latestAuthorComment.nickname}
-                          </Typography>
-                          <Typography variant="caption" sx={{ backgroundColor: '#00BCD4', color: 'white', px: 0.5, borderRadius: 1, fontSize: '0.6rem' }}>
-                            작성자
-                          </Typography>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>{latestAuthorComment.nickname}</Typography>
+                          <Typography variant="caption" sx={{ backgroundColor: '#00BCD4', color: 'white', px: 0.5, borderRadius: 1, fontSize: '0.6rem' }}>작성자</Typography>
                           <Typography variant="caption" color="textSecondary" sx={{ ml: 'auto' }}>
-                            {new Date(latestAuthorComment.created_at).toLocaleString('ko-KR', {
-                              year: 'numeric', month: 'numeric', day: 'numeric',
-                              hour: '2-digit', minute: '2-digit'
-                            })}
+                            {new Date(latestAuthorComment.created_at).toLocaleString('ko-KR')}
                           </Typography>
                         </Box>
                         <Typography variant="body2">{latestAuthorComment.content}</Typography>
@@ -394,24 +408,24 @@ const TodayQuest = ({ currentUser }) => {
                   </Typography>
                 ) : (
                     comments.map((comment) => {
-                       const isAuthor = comment.user_id === currentUser?.userId;
-                       const isHighlighted = false; // TodayQuest.js에는 하이라이트 기능이 없음
+                       const isAuthor = comment.user_id === currentUser?.userId; 
                        const isEditing = editingCommentId === comment.id;
                        return (
                          <Box
                            key={comment.id}
                            id={`comment-${comment.id}`}
                            sx={{
-                             display: 'flex',
-                             flexDirection: 'column',
-                             marginBottom: 2,
-                             p: 1,
-                             borderRadius: 1,
-                             backgroundColor: isHighlighted ? '#FFF0B3' : (isAuthor ? '#F3F4F6' : 'transparent'),
-                           }}>
+                              p: 1,
+                              borderRadius: 1,
+                              backgroundColor: comment.user_id === currentUser?.userId ? "#F3F4F6" : "transparent",
+                              display: "flex",
+                              gap: 1,
+                              alignItems: "flex-start"
+                            }}
+                           >
                            <Box sx={{ display: 'flex', alignItems: 'flex-start', width: '100%' }}>
                              <Link to={`/profile/${comment.user_id}`} onClick={handleCloseModal}>
-                               <Avatar src={`http://localhost:3010${comment.profile_image_url}`} alt={comment.nickname} sx={{ width: 30, height: 30, marginRight: 1 }} />
+                               <Avatar src={`http://localhost:3010${comment.profile_image_url}`} sx={{ width: 30, height: 30 }} />
                              </Link>
                            <Box sx={{ flexGrow: 1 }}>
                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -430,42 +444,45 @@ const TodayQuest = ({ currentUser }) => {
                                  })}
                                </Typography>
                              </Box>
-                             {isEditing ? (
-                               <TextField
-                                  fullWidth
-                                  multiline
-                                  value={editedCommentContent}
-                                  onChange={(e) => setEditedCommentContent(e.target.value)}
-                                  variant="outlined"
-                                  size="small"
-                                  sx={{ mt: 1, mb: 1 }}
-                                  error={editedCommentContent.length > 500}
-                                  helperText={`${editedCommentContent.length}/500 ${editedCommentContent.length > 500 ? ' (500자를초과했습니다)' : ''}`}/>
-                              ) : (
-                               <Typography variant="body2" component="div">{parseMentions(comment.content, comment.resolvedMentions)}</Typography>
-                             )}
-                           </Box>
-                           {isAuthor && !isEditing && (
-                             <Box sx={{ ml: 1, display: 'flex', gap: 0.5 }}>
-                               <IconButton size="small" onClick={() => handleEditCommentClick(comment)} color="primary">
-                                 <EditIcon fontSize="small" />
-                               </IconButton>
-                               <IconButton size="small" onClick={() => handleDeleteComment(comment.id)} color="error">
-                                 <DeleteIcon fontSize="small" />
-                               </IconButton>
-                             </Box>
-                           )}
-                         </Box>
-                         {isEditing && (
-                           <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 1 }}>
-                             <Button size="small" variant="outlined" onClick={handleCancelEditComment}>취소</Button>
-                             <Button size="small" variant="contained" onClick={() => handleSaveEditedComment(comment.id)}>저장</Button>
-                           </Box>
-                         )}
-                       </Box>
+                                                                                                                    {isEditing ? (
+                                                                                                                      <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                                                                                                        <TextField
+                                                                                                                          fullWidth
+                                                                                                                          multiline
+                                                                                                                          value={editedCommentContent}
+                                                                                                                          onChange={(e) => setEditedCommentContent(e.target.value)}
+                                                                                                                          variant="outlined"
+                                                                                                                          size="small"
+                                                                                                                          sx={{ mt: 1, mb: 1 }}
+                                                                                                                          error={editedCommentContent.length > 500}
+                                                                                                                          helperText={`${editedCommentContent.length}/500 ${editedCommentContent.length > 500 ? ' (500자를초과했습니다)' : ''}`}
+                                                                                                                        />
+                                                                                                                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: -1 }}>
+                                                                                                                          <Button size="small" variant="outlined" onClick={handleCancelEditComment}>취소</Button>
+                                                                                                                          <Button size="small" variant="contained" onClick={() => handleSaveEditedComment(comment.id)}>저장</Button>
+                                                                                                                        </Box>
+                                                                                                                      </Box>
+                                                                                                                    ) : (
+                                                                                                                      <Typography variant="body2" component="div">
+                                                                                                                        {parseMentions(comment.content, comment.resolvedMentions)}
+                                                                                                                      </Typography>
+                                                                                                                    )}                                                                                     </Box>
+                                                                                      {isAuthor && !isEditing && (
+                                                                                        <Box sx={{ ml: 1, display: 'flex', gap: 0.5 }}>
+                                                                                          <IconButton size="small" onClick={() => handleEditCommentClick(comment)} color="primary">
+                                                                                            <EditIcon fontSize="small" />
+                                                                                          </IconButton>
+                                                                                          <IconButton size="small" onClick={() => handleDeleteComment(comment.id)} color="error">
+                                                                                            <DeleteIcon fontSize="small" />
+                                                                                          </IconButton>
+                                                                                        </Box>
+                                                                                      )}
+                                                                                    </Box>
+                                                                              </Box>
                        );
                      })
                    )}
+                <div ref={commentsEndRef} />
               </Box>
 
               <TextField
@@ -474,16 +491,17 @@ const TodayQuest = ({ currentUser }) => {
                 placeholder="댓글을 작성하세요"
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === "Enter") {
-                    handleAddComment()
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && e.ctrlKey) { // Ctrl+Enter로 제출
+                    handleAddComment();
                   }
                 }}
                 multiline
-                maxRows={3}
+                maxRows={4}
                 inputProps={{ maxLength: 500 }}
+                sx={{ mt: 1 }}
                 error={newComment.length > 500}
-                helperText={`${newComment.length}/500 ${newComment.length > 500 ? ' (500자를 초과했습니다)' : ''}`}
+                helperText={`${newComment.length}/500 ${newComment.length > 500 ? ' (500자를 초과했습니다)' : 'Ctrl+Enter로 제출'}`}
               />
             </DialogContent>
             <DialogActions>

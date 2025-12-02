@@ -902,7 +902,7 @@ const [editedCommentContent, setEditedCommentContent] = useState("");
                 placeholder="댓글을 작성하세요"
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
-                onKeyPress={(e) => {
+                onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     handleAddComment()
                   }

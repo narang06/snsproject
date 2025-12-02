@@ -77,7 +77,7 @@ const processNotifications = (notifications) => {
 };
 
 
-const Notifications = ({ currentUser }) => {
+const Notifications = ({ currentUser, onUpdateUnreadCount }) => {
   const [rawNotifications, setRawNotifications] = useState([]); // Store original notifications
   const [processedNotifications, setProcessedNotifications] = useState([]); // Store grouped notifications for display
   const [loading, setLoading] = useState(true)
@@ -148,6 +148,7 @@ const Notifications = ({ currentUser }) => {
       );
       setRawNotifications(updatedRawNotifications);
       setProcessedNotifications(processNotifications(updatedRawNotifications));
+      onUpdateUnreadCount(); // 부모에게 알림 개수 다시 세도록 요청
 
     } catch (err) {
       console.error("알림 읽음 표시 실패:", err)
@@ -185,8 +186,10 @@ const Notifications = ({ currentUser }) => {
   const getNotificationMessage = (notification) => {
     switch (notification.type) {
         case "like":
+        case "like_group": // 이 부분 추가
             return `님이 당신의 게시물을 좋아했습니다`;
         case "comment":
+        case "comment_group": // 이 부분 추가
             return `님이 당신의 게시물에 댓글을 달았습니다`;
         case "follow":
             return `님이 당신을 팔로우했습니다`;
@@ -213,18 +216,17 @@ const Notifications = ({ currentUser }) => {
     if (notification.type === 'multiple_comments') {
         const firstCommenter = notification.commenters[0];
         return (
-            <Typography variant="body2">
-                <strong>{firstCommenter}</strong>
-                {getNotificationMessage(notification)}
-            </Typography>
+          <Typography variant="body2">
+              <strong>{firstCommenter}</strong>
+              {getNotificationMessage(notification)}
+          </Typography>
         )
     }
-    // For single notifications
     return (
-        <Typography variant="body2">
-            <strong>{notification.fromUserName}</strong>
-            {getNotificationMessage(notification)}
-        </Typography>
+      <Typography variant="body2">
+          <strong>{notification.fromUserName}</strong>
+          {getNotificationMessage(notification)}
+      </Typography>
     )
   }
 
