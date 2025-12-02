@@ -6,7 +6,6 @@ const router = express.Router()
 
 // 좋아요 추가
 router.post("/", authMiddleware, async (req, res) => {
-  console.log("LIKE BODY:", req.body);
   try {
     const { submissionId } = req.body
     const userId = req.user.userId
@@ -121,7 +120,6 @@ router.delete("/", authMiddleware, async (req, res) => {
     const userId = req.user.userId;
 
     const [deleteQueryResult] = await db.query("DELETE FROM likes WHERE submission_id = ? AND user_id = ?", [submissionId, userId]);
-    console.log(`[DELETE /likes] DB DELETE Query Result:`, deleteQueryResult); // 디버깅 로그
 
     if (deleteQueryResult.affectedRows > 0) {
       // --- '좋아요' 그룹 알림 업데이트 로직 ---

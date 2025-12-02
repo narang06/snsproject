@@ -122,7 +122,6 @@ const Home = ({ currentUser }) => {
   }, [fetchSubmissions]);
 
   useEffect(() => {
-    console.log('[Home.js] Fetching submissions with:', { selectedDate, debouncedSearchQuery, sortOrder }); // Added console.log
     fetchSubmissionsWithLoading(selectedDate, debouncedSearchQuery, sortOrder);
   }, [selectedDate, debouncedSearchQuery, sortOrder, fetchSubmissionsWithLoading]);
 
@@ -293,8 +292,14 @@ const Home = ({ currentUser }) => {
 
   if (loading) {
     return (
-      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
-        <CircularProgress />
+      <Box sx={{ 
+        display: "flex", 
+        justifyContent: "center", 
+        alignItems: "center", 
+        height: "100vh",
+        backgroundColor: "#f9f9f9" 
+      }}>
+        <CircularProgress size={60} thickness={5} sx={{ color: "#6366F1" }} />
       </Box>
     )
   }
@@ -338,6 +343,7 @@ const Home = ({ currentUser }) => {
             />
           </Stack>
 
+
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="center">
             <FormControl size="medium" sx={{ minWidth: 140 }}>
               <InputLabel>정렬</InputLabel>
@@ -364,9 +370,10 @@ const Home = ({ currentUser }) => {
           </Stack>
         </Stack>
 
-
         {submissions.length === 0 ? (
-          <Typography sx={{ textAlign: "center", marginTop: 4 }}>아직 게시물이 없습니다</Typography>
+          <Typography sx={{ textAlign: "center", marginTop: 4 }}>
+            아직 게시물이 없습니다
+          </Typography>
         ) : (
           submissions.map((submission) => (
             <SubmissionCard

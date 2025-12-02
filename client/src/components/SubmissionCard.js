@@ -71,14 +71,14 @@ const SubmissionCard = ({
   const isSubmissionOwner = currentUserId === submission.user_id;
 
   return (
-    <Card sx={{ marginBottom: 2 }}>
+    <Card sx={{ marginBottom: 2, borderRadius: 2, boxShadow: 3, backgroundColor: "#fff" }}>
       <CardHeader
         avatar={
           <Link to={`/profile/${submission.user_id}`}>
             <Avatar src={`http://localhost:3010${submission.userProfileImage}`} alt={submission.nickname} />
           </Link>
         }
-        title={<Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>{submission.nickname}</Typography>}
+        title={<Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: "#111" }}>{submission.nickname}</Typography>}
         subheader={
           <>
             <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 'medium' }}>
@@ -96,12 +96,20 @@ const SubmissionCard = ({
           isSubmissionOwner && (onDeleteSubmission || onEditSubmission) ? (
             <>
               {onEditSubmission && (
-                <IconButton aria-label="edit" onClick={() => onEditSubmission(submission)}>
+                <IconButton 
+                  aria-label="edit" 
+                  onClick={() => onEditSubmission(submission)}
+                  sx={{ color: "#6366F1", '&:hover': { backgroundColor: 'rgba(99,102,241,0.1)' } }}
+                >
                   <EditIcon />
                 </IconButton>
               )}
               {onDeleteSubmission && (
-                <IconButton aria-label="delete" onClick={() => onDeleteSubmission(submission.id)}>
+                <IconButton 
+                  aria-label="delete" 
+                  onClick={() => onDeleteSubmission(submission.id)}
+                  sx={{ color: "#EF4444", '&:hover': { backgroundColor: 'rgba(239,68,68,0.1)' } }}
+                >
                   <DeleteIcon />
                 </IconButton>
               )}
@@ -119,10 +127,11 @@ const SubmissionCard = ({
               scrollSnapType: 'x mandatory',
               borderTop: 1,
               borderBottom: 1,
-              borderColor: 'divider',
+              borderColor: '#E5E7EB',
+              backgroundColor: '#F9FAFB',
               '&::-webkit-scrollbar': { display: 'none' },
               msOverflowStyle: 'none',
-              scrollbarWidth: 'none', 
+              scrollbarWidth: 'none',
             }}
             onScroll={(e) => {
               const newIndex = Math.round(e.currentTarget.scrollLeft / e.currentTarget.offsetWidth);
@@ -167,10 +176,11 @@ const SubmissionCard = ({
               <IconButton
                 sx={{
                   position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)',
-                  backgroundColor: 'rgba(0,0,0,0.4)', color: 'white', '&:hover': { backgroundColor: 'rgba(0,0,0,0.6)' }, zIndex: 1
+                  backgroundColor: 'rgba(0,0,0,0.4)', color: 'white',
+                  '&:hover': { backgroundColor: 'rgba(0,0,0,0.6)' },
+                  zIndex: 1
                 }}
                 onClick={() => handleScrollPrevLocal()}
-                disabled={currentImageIndexLocal === 0}
               >
                 <ArrowBackIosIcon fontSize="small" />
               </IconButton>
@@ -189,7 +199,11 @@ const SubmissionCard = ({
         </Box>
       )}
       <CardContent>
-        <Typography variant="body1" component="div">
+        <Typography
+          variant="body1"
+          component="div"
+          sx={{ color: "#111", lineHeight: 1.5, whiteSpace: 'pre-line' }}
+        >
           {parseMentions(submission.content, submission.resolvedMentions)}
         </Typography>
       </CardContent>
@@ -204,10 +218,23 @@ const SubmissionCard = ({
               <FavoriteBorderIcon />
             )
           }
+          sx={{
+            textTransform: 'none',
+            '&:hover': { backgroundColor: 'rgba(236,72,153,0.1)' },
+            borderRadius: 1,
+          }}
         >
           {submission.likeCount}
         </Button>
-        <Button size="small" startIcon={<ChatBubbleOutlineIcon />} onClick={() => handleOpenModal(submission)}>
+        <Button
+          size="small"
+          startIcon={<ChatBubbleOutlineIcon />}
+          onClick={() => handleOpenModal(submission)}
+          sx={{
+            textTransform: 'none',
+            borderRadius: 1,
+          }}
+        >
           {submission.commentCount}
         </Button>
       </CardActions>

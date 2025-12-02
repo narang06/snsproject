@@ -105,7 +105,6 @@ function MainAppContent() {
   });
 
   useEffect(() => {
-  console.log("isAuthenticated:", isAuthenticated);
   }, [isAuthenticated]); 
 
 
@@ -121,7 +120,6 @@ function MainAppContent() {
           localStorage.removeItem("userId");
           setIsAuthenticated(false);
           setCurrentUser(null);
-          console.log("Expired token found, logging out.");
         } else {
           setCurrentUser(decoded);
           setIsAuthenticated(true);
@@ -142,7 +140,6 @@ function MainAppContent() {
     const wasAuthenticated = isAuthenticatedRef.current;
 
     if (wasAuthenticated && !isAuthenticated && !loading && !localStorage.getItem("token")) {
-      console.log("Navigating to login with message");
       navigate(`/login?message=로그아웃%20되었습니다.&type=info`, { replace: true });
     }
   }, [isAuthenticated, loading, navigate]);
