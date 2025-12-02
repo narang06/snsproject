@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useCallback } from "react"
-import { Link } from 'react-router-dom';
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Link } from "react-router-dom";
 import {
   Container,
   Avatar,
@@ -19,21 +19,30 @@ import {
   InputLabel,
   FormControl,
   Stack,
-  IconButton
-} from "@mui/material"
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
-import SubmissionCard from '../components/SubmissionCard';
-import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { ko } from 'date-fns/locale';
-import { useLocation, useNavigate } from 'react-router-dom';
+  IconButton,
+} from "@mui/material";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
+import SubmissionCard from "../components/SubmissionCard";
+import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
+import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
+import { ko } from "date-fns/locale";
+import { useLocation, useNavigate } from "react-router-dom";
 import { parseMentions } from "../utils/mentionParser";
-import { useSubmissions } from '../contexts/SubmissionsContext'; 
+import { useSubmissions } from "../contexts/SubmissionsContext";
 
 const Home = ({ currentUser }) => {
-  const { submissions, fetchSubmissions, likedSubmissions, handleLikeInContext, updateSubmissionCommentCount } = useSubmissions();
-  const [loading, setLoading] = useState(true); 
+  const {
+    submissions,
+    fetchSubmissions,
+    likedSubmissions,
+    handleLikeInContext,
+    updateSubmissionCommentCount,
+    page,
+    hasMore,
+    loadingMore,
+    loadMoreHomeSubmissions,
+  } = useSubmissions();
   const [openModal, setOpenModal] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState(null);
   const [comments, setComments] = useState([]);
@@ -44,56 +53,105 @@ const Home = ({ currentUser }) => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortOrder, setSortOrder] = useState("latest");
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [highlightedCommentId, setHighlightedCommentId] = useState(null);
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editedCommentContent, setEditedCommentContent] = useState("");
   const location = useLocation();
   const navigate = useNavigate();
+  const observerRef = useRef(null);
 
-  const handleOpenModal = useCallback(async (submission, highlightCommentId = null) => {
-    setSelectedSubmission(submission)
-    setOpenModal(true)
-
-    try {
-      const token = localStorage.getItem("token")
-      const response = await fetch(`http://localhost:3010/comments/submission/${submission.id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-
-      const data = await response.json()
-      if (response.ok) {
-        let commentsList = [...data];
-        const postAuthorId = submission.user_id; 
-
-        const authorComments = commentsList.filter(c => c.user_id === postAuthorId);
-        let foundLatestAuthorComment = null;
-        if (authorComments.length > 0) {
-          foundLatestAuthorComment = authorComments.reduce((latest, current) => {
-            return new Date(current.created_at) > new Date(latest.created_at) ? current : latest;
-          }, authorComments[0]);
-        }
-        setLatestAuthorComment(foundLatestAuthorComment); 
-
-        commentsList.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-        setComments(commentsList); 
-
-        if (highlightCommentId) {
-          setTimeout(() => {
-            const commentElement = document.getElementById(`comment-${highlightCommentId}`);
-            commentElement?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-            setHighlightedCommentId(highlightCommentId); 
-            setTimeout(() => {
-              setHighlightedCommentId(null);
-            }, 2000);
-          }, 300);
-        }
+  const handleObserver = useCallback(
+    (entries) => {
+      const target = entries[0];
+      if (target.isIntersecting && hasMore && !loadingMore) {
+        loadMoreHomeSubmissions();
       }
-    } catch (err) {
-      console.error("댓글 로드 실패:", err)
-    }
-  }, [setOpenModal, setSelectedSubmission, setComments, setHighlightedCommentId, setLatestAuthorComment]);
+    },
+    [hasMore, loadingMore, loadMoreHomeSubmissions],
+  );
+
+  useEffect(() => {
+    const option = {
+      root: null,
+      rootMargin: "20px",
+      threshold: 0,
+    };
+    const observer = new IntersectionObserver(handleObserver, option);
+    if (observerRef.current) observer.observe(observerRef.current);
+    return () => observer.disconnect();
+  }, [handleObserver]);
+
+  const handleOpenModal = useCallback(
+    async (submission, highlightCommentId = null) => {
+      setSelectedSubmission(submission);
+      setOpenModal(true);
+
+      try {
+        const token = localStorage.getItem("token");
+        const response = await fetch(
+          `http://localhost:3010/comments/submission/${submission.id}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
+
+        const data = await response.json();
+        if (response.ok) {
+          let commentsList = [...data];
+          const postAuthorId = submission.user_id;
+
+          const authorComments = commentsList.filter(
+            (c) => c.user_id === postAuthorId,
+          );
+          let foundLatestAuthorComment = null;
+          if (authorComments.length > 0) {
+            foundLatestAuthorComment = authorComments.reduce(
+              (latest, current) => {
+                return new Date(current.created_at) >
+                  new Date(latest.created_at)
+                  ? current
+                  : latest;
+              },
+              authorComments[0],
+            );
+          }
+          setLatestAuthorComment(foundLatestAuthorComment);
+
+          commentsList.sort(
+            (a, b) => new Date(a.created_at) - new Date(b.created_at),
+          );
+          setComments(commentsList);
+
+          if (highlightCommentId) {
+            setTimeout(() => {
+              const commentElement = document.getElementById(
+                `comment-${highlightCommentId}`,
+              );
+              commentElement?.scrollIntoView({
+                behavior: "smooth",
+                block: "center",
+              });
+
+              setHighlightedCommentId(highlightCommentId);
+              setTimeout(() => {
+                setHighlightedCommentId(null);
+              }, 2000);
+            }, 300);
+          }
+        }
+      } catch (err) {
+        console.error("댓글 로드 실패:", err);
+      }
+    },
+    [
+      setOpenModal,
+      setSelectedSubmission,
+      setComments,
+      setHighlightedCommentId,
+      setLatestAuthorComment,
+    ],
+  );
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -106,107 +164,134 @@ const Home = ({ currentUser }) => {
     };
   }, [searchQuery]); // searchQuery가 바뀔 때마다 이 effect가 실행됩니다.
 
-  const fetchSubmissionsWithLoading = useCallback(async (date, query, sort) => {
-    setLoading(true);
-    await fetchSubmissions(date, query, sort);
-    setLoading(false);
-  }, [fetchSubmissions]);
-
   useEffect(() => {
-    fetchSubmissionsWithLoading(selectedDate, debouncedSearchQuery, sortOrder);
-  }, [selectedDate, debouncedSearchQuery, sortOrder, fetchSubmissionsWithLoading]);
+    fetchSubmissions(selectedDate, debouncedSearchQuery, sortOrder); // page 1로 초기 호출
+  }, [selectedDate, debouncedSearchQuery, sortOrder, fetchSubmissions]);
 
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
-    const openSubmissionId = queryParams.get('openSubmission');
-    const highlightCommentId = queryParams.get('highlightComment');
+
+    const openSubmissionId = queryParams.get("openSubmission");
+
+    const highlightCommentId = queryParams.get("highlightComment");
 
     if (openSubmissionId) {
       const findAndOpenSubmission = async () => {
-        // submissions가 Context에서 관리되므로, 여기서는 submissions 배열에서 찾음
-        const submissionToOpen = submissions.find(s => s.id === parseInt(openSubmissionId));
+        const submissionToOpen = submissions.find(
+          (s) => s.id === parseInt(openSubmissionId),
+        );
+
         if (submissionToOpen) {
           handleOpenModal(submissionToOpen, highlightCommentId);
         } else {
-          // submissions 배열에 없을 경우 (예: 페이지 새로고침 등), 서버에서 직접 가져와야 함 (예외 처리)
           try {
             const token = localStorage.getItem("token");
-            const response = await fetch(`http://localhost:3010/submissions/${openSubmissionId}`, {
-              headers: { Authorization: `Bearer ${token}` },
-            });
+
+            const response = await fetch(
+              `http://localhost:3010/submissions/${openSubmissionId}`,
+              {
+                headers: { Authorization: `Bearer ${token}` },
+              },
+            );
+
             const data = await response.json();
+
             if (response.ok && data.submission) {
               handleOpenModal(data.submission, highlightCommentId);
-            } else {
-              console.error("게시물 로드 실패:", data.message || "게시물을 찾을 수 없습니다.");
             }
           } catch (error) {
             console.error("게시물 로드 중 오류 발생:", error);
           }
         }
+
         navigate(location.pathname, { replace: true });
       };
-      // submissions가 로드된 후에만 실행되도록 종속성 배열에 submissions 추가
-      // 또는 submissions 로딩 상태를 확인
-      if (submissions.length > 0 || !loading) { // submissions가 로드되었거나, 초기 로딩이 끝났으면
+
+      if (!loadingMore) {
         findAndOpenSubmission();
       }
     }
-    }, [location.search, currentUser, submissions, loading ]); 
+  }, [
+    location.search,
+    currentUser,
+    submissions,
+    loadingMore,
+    handleOpenModal,
+    navigate,
+  ]);
 
   const handleCloseModal = () => {
-    setOpenModal(false)
-    setSelectedSubmission(null)
-    setComments([])
-    setNewComment("")
-  }
+    setOpenModal(false);
+
+    setSelectedSubmission(null);
+
+    setComments([]);
+
+    setNewComment("");
+  };
 
   const handleAddComment = async () => {
-    if (!newComment.trim()) return
+    if (!newComment.trim()) return;
 
     try {
-      const token = localStorage.getItem("token")
+      const token = localStorage.getItem("token");
+
       const response = await fetch("http://localhost:3010/comments", {
         method: "POST",
+
         headers: {
           "Content-Type": "application/json",
+
           Authorization: `Bearer ${token}`,
         },
+
         body: JSON.stringify({
           submissionId: selectedSubmission.id,
+
           content: newComment,
         }),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
+
       if (response.ok) {
-        const updatedComments = [...comments, data].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+        const updatedComments = [...comments, data].sort(
+          (a, b) => new Date(a.created_at) - new Date(b.created_at),
+        );
+
         setComments(updatedComments);
+
         setNewComment("");
 
         updateSubmissionCommentCount(selectedSubmission.id, 1);
 
         const postAuthorId = selectedSubmission.user_id;
+
         if (data.user_id === postAuthorId) {
-          if (!latestAuthorComment || new Date(data.created_at) > new Date(latestAuthorComment.created_at)) {
+          if (
+            !latestAuthorComment ||
+            new Date(data.created_at) > new Date(latestAuthorComment.created_at)
+          ) {
             setLatestAuthorComment(data);
           }
         }
       }
     } catch (err) {
-      console.error("댓글 작성 실패:", err)
+      console.error("댓글 작성 실패:", err);
     }
-  }
+  };
 
   const handleLike = handleLikeInContext;
 
   const handleOpenImageModal = (imageUrl) => {
     setSelectedImageForModal(imageUrl);
+
     setImageModalOpen(true);
   };
 
   const handleCloseImageModal = () => {
     setImageModalOpen(false);
+
     setSelectedImageForModal(null);
   };
 
@@ -214,19 +299,29 @@ const Home = ({ currentUser }) => {
     if (!window.confirm("정말로 이 댓글을 삭제하시겠습니까?")) {
       return;
     }
+
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:3010/comments/${commentId}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
+
+      const response = await fetch(
+        `http://localhost:3010/comments/${commentId}`,
+        {
+          method: "DELETE",
+
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
 
       if (!response.ok) {
         const data = await response.json();
+
         alert(data.message || "댓글 삭제 실패");
+
         return;
       }
-      setComments(comments.filter(comment => comment.id !== commentId));
+
+      setComments(comments.filter((comment) => comment.id !== commentId));
+
       updateSubmissionCommentCount(selectedSubmission.id, -1);
 
       if (latestAuthorComment && latestAuthorComment.id === commentId) {
@@ -236,63 +331,97 @@ const Home = ({ currentUser }) => {
       alert("댓글이 삭제되었습니다.");
     } catch (err) {
       console.error("댓글 삭제 오류:", err);
+
       alert("서버 연결 오류");
     }
   };
 
   const handleEditCommentClick = (comment) => {
     setEditingCommentId(comment.id);
+
     setEditedCommentContent(comment.content);
   };
 
   const handleCancelEditComment = () => {
     setEditingCommentId(null);
+
     setEditedCommentContent("");
   };
 
   const handleSaveEditedComment = async (commentId) => {
-    if (editedCommentContent.trim().length < 1 || editedCommentContent.trim().length > 500) {
+    if (
+      editedCommentContent.trim().length < 1 ||
+      editedCommentContent.trim().length > 500
+    ) {
       alert("댓글 내용은 1자 이상 500자 이하로 입력해주세요.");
+
       return;
     }
+
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:3010/comments/${commentId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+
+      const response = await fetch(
+        `http://localhost:3010/comments/${commentId}`,
+        {
+          method: "PUT",
+
+          headers: {
+            "Content-Type": "application/json",
+
+            Authorization: `Bearer ${token}`,
+          },
+
+          body: JSON.stringify({ content: editedCommentContent }),
         },
-        body: JSON.stringify({ content: editedCommentContent }),
-      });
+      );
 
       if (!response.ok) {
         const data = await response.json();
+
         alert(data.message || "댓글 수정 실패");
+
         return;
       }
+
       const updatedComment = await response.json();
-      setComments(comments.map(comment => comment.id === commentId ? updatedComment : comment));
-      handleCancelEditComment(); 
+
+      setComments(
+        comments.map((comment) =>
+          comment.id === commentId ? updatedComment : comment,
+        ),
+      );
+
+      handleCancelEditComment();
+
       alert("댓글이 수정되었습니다.");
     } catch (err) {
       console.error("댓글 수정 오류:", err);
+
       alert("서버 연결 오류");
     }
   };
 
-  if (loading) {
+  if (loadingMore && page === 1) {
+    // 첫 페이지 로딩 중일 때만 전체 로딩 스피너
+
     return (
-      <Box sx={{ 
-        display: "flex", 
-        justifyContent: "center", 
-        alignItems: "center", 
-        height: "100vh",
-        backgroundColor: "#f9f9f9" 
-      }}>
+      <Box
+        sx={{
+          display: "flex",
+
+          justifyContent: "center",
+
+          alignItems: "center",
+
+          height: "100vh",
+
+          backgroundColor: "#f9f9f9",
+        }}
+      >
         <CircularProgress size={60} thickness={5} sx={{ color: "#6366F1" }} />
       </Box>
-    )
+    );
   }
 
   return (
@@ -303,20 +432,24 @@ const Home = ({ currentUser }) => {
             <DatePicker
               label="날짜 선택"
               value={selectedDate}
-              onChange={(newValue) => { setSelectedDate(newValue); setSearchQuery(''); }}
+              onChange={(newValue) => { setSelectedDate(newValue); setSearchQuery(""); }}
               disabled={!!searchQuery}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  size="medium"
-                  fullWidth
-                  sx={{
-                    backgroundColor: "#f9f9f9",
-                    borderRadius: 2,
-                    '& .MuiOutlinedInput-notchedOutline': { borderColor: "#ccc" },
-                  }}
-                />
-              )}
+              slots={{
+                textField: (params) => (
+                  <TextField
+                    {...params}
+                    size="medium"
+                    fullWidth
+                    sx={{
+                      backgroundColor: "#f9f9f9",
+                      borderRadius: 2,
+                      "& .MuiOutlinedInput-notchedOutline": {
+                        borderColor: "#ccc",
+                      },
+                    }}
+                  />
+                ),
+              }}
             />
             <TextField
               fullWidth
@@ -324,18 +457,24 @@ const Home = ({ currentUser }) => {
               size="medium"
               label="닉네임 검색"
               value={searchQuery}
-              onChange={(e) => { setSearchQuery(e.target.value); if(e.target.value) setSelectedDate(null); }}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                if (e.target.value) setSelectedDate(null);
+              }}
               disabled={!!selectedDate}
               sx={{
                 backgroundColor: "#f9f9f9",
                 borderRadius: 2,
-                '& .MuiOutlinedInput-notchedOutline': { borderColor: "#ccc" },
+                "& .MuiOutlinedInput-notchedOutline": { borderColor: "#ccc" },
               }}
             />
           </Stack>
 
-
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="center">
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1}
+            alignItems="center"
+          >
             <FormControl size="medium" sx={{ minWidth: 140 }}>
               <InputLabel>정렬</InputLabel>
               <Select
@@ -353,7 +492,10 @@ const Home = ({ currentUser }) => {
             <Button
               variant="contained"
               color="primary"
-              onClick={() => { setSelectedDate(null); setSearchQuery(''); }}
+              onClick={() => {
+                setSelectedDate(null);
+                setSearchQuery("");
+              }}
               sx={{ borderRadius: 2, height: 44, textTransform: "none" }}
             >
               필터 초기화
@@ -361,7 +503,7 @@ const Home = ({ currentUser }) => {
           </Stack>
         </Stack>
 
-        {submissions.length === 0 ? (
+        {submissions.length === 0 && !loadingMore ? (
           <Typography sx={{ textAlign: "center", marginTop: 4 }}>
             아직 게시물이 없습니다
           </Typography>
@@ -370,26 +512,48 @@ const Home = ({ currentUser }) => {
             <SubmissionCard
               key={submission.id}
               submission={submission}
-              handleOpenModal={handleOpenModal}         
-              handleOpenImageModal={handleOpenImageModal} 
+              handleOpenModal={handleOpenModal}
+              handleOpenImageModal={handleOpenImageModal}
               handleLike={handleLikeInContext}
               likedSubmissions={likedSubmissions}
-              currentUserId={currentUser?.userId}      
+              currentUserId={currentUser?.userId}
             />
           ))
         )}
-
-        <Dialog open={openModal} onClose={handleCloseModal} maxWidth="sm" fullWidth>
+        <div ref={observerRef} style={{ height: "1px" }} />
+        {loadingMore && (
+          <Box sx={{ display: "flex", justifyContent: "center", my: 2 }}>
+            <CircularProgress />
+          </Box>
+        )}
+        {!hasMore && submissions.length > 0 && (
+          <Typography
+            sx={{ textAlign: "center", my: 2, color: "text.secondary" }}
+          >
+            더 이상 게시물이 없습니다.
+          </Typography>
+        )}
+        <Dialog
+          open={openModal}
+          onClose={handleCloseModal}
+          maxWidth="sm"
+          fullWidth
+        >
           {selectedSubmission && (
             <>
-              <DialogTitle>{selectedSubmission.nickname}님의 게시물</DialogTitle>
+              <DialogTitle>
+                {selectedSubmission.nickname}님의 게시물
+              </DialogTitle>
               <DialogContent>
                 {selectedSubmission.imageUrl && (
                   <Box
                     component="img"
                     src={`http://localhost:3010${selectedSubmission.imageUrl}`}
                     alt="제출물"
-                    onError={(e) => { e.target.src = 'https://via.placeholder.com/300?text=Image+Not+Found'; }}
+                    onError={(e) => {
+                      e.target.src =
+                        "https://via.placeholder.com/300?text=Image+Not+Found";
+                    }}
                     sx={{ width: "100%", marginBottom: 2, borderRadius: 1 }}
                   />
                 )}
@@ -401,27 +565,71 @@ const Home = ({ currentUser }) => {
                   댓글 ({comments.length})
                 </Typography>
 
-                  <Box sx={{ maxHeight: 300, overflowY: "auto", marginBottom: 2 }}>  
+                <Box
+                  sx={{ maxHeight: 300, overflowY: "auto", marginBottom: 2 }}
+                >
                   {latestAuthorComment && (
-                    <Box sx={{ borderBottom: '1px dashed #ccc', pb: 1, mb: 2 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'flex-start', p: 1, borderRadius: 1, backgroundColor: '#E0F2F7', border: '1px solid #B2EBF2' }}>
-                        <Avatar src={latestAuthorComment.profile_image_url} alt={latestAuthorComment.nickname} sx={{ width: 30, height: 30, marginRight: 1 }} />
+                    <Box sx={{ borderBottom: "1px dashed #ccc", pb: 1, mb: 2 }}>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "flex-start",
+                          p: 1,
+                          borderRadius: 1,
+                          backgroundColor: "#E0F2F7",
+                          border: "1px solid #B2EBF2",
+                        }}
+                      >
+                        <Avatar
+                          src={latestAuthorComment.profile_image_url}
+                          alt={latestAuthorComment.nickname}
+                          sx={{ width: 30, height: 30, marginRight: 1 }}
+                        />
                         <Box sx={{ flexGrow: 1 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 0.5,
+                            }}
+                          >
+                            <Typography
+                              variant="subtitle2"
+                              sx={{ fontWeight: "bold" }}
+                            >
                               {latestAuthorComment.nickname}
                             </Typography>
-                            <Typography variant="caption" sx={{ backgroundColor: '#00BCD4', color: 'white', px: 0.5, borderRadius: 1, fontSize: '0.6rem' }}>
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                backgroundColor: "#00BCD4",
+                                color: "white",
+                                px: 0.5,
+                                borderRadius: 1,
+                                fontSize: "0.6rem",
+                              }}
+                            >
                               작성자
                             </Typography>
-                            <Typography variant="caption" color="textSecondary" sx={{ ml: 'auto' }}>
-                              {new Date(latestAuthorComment.created_at).toLocaleString('ko-KR', {
-                                year: 'numeric', month: 'numeric', day: 'numeric',
-                                hour: '2-digit', minute: '2-digit'
+                            <Typography
+                              variant="caption"
+                              color="textSecondary"
+                              sx={{ ml: "auto" }}
+                            >
+                              {new Date(
+                                latestAuthorComment.created_at,
+                              ).toLocaleString("ko-KR", {
+                                year: "numeric",
+                                month: "numeric",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
                               })}
                             </Typography>
                           </Box>
-                          <Typography variant="body2">{latestAuthorComment.content}</Typography>
+                          <Typography variant="body2">
+                            {latestAuthorComment.content}
+                          </Typography>
                         </Box>
                       </Box>
                     </Box>
@@ -434,78 +642,169 @@ const Home = ({ currentUser }) => {
                   ) : (
                     comments.map((comment) => {
                       const isAuthor = comment.user_id === currentUser?.userId;
-                      const isHighlighted = highlightedCommentId && (highlightedCommentId == comment.id);
+                      const isHighlighted =
+                        highlightedCommentId &&
+                        highlightedCommentId == comment.id;
                       const isEditing = editingCommentId === comment.id;
                       return (
-                        <Box 
-                          key={comment.id} 
-                          id={`comment-${comment.id}`} 
-                          sx={{ 
-                            display: 'flex', 
-                            flexDirection: 'column',
-                            marginBottom: 2, 
-                            p: 1, 
-                            borderRadius: 1, 
-                            backgroundColor: isHighlighted ? '#FFF0B3' : (isAuthor ? '#F3F4F6' : 'transparent'), 
-                            transition: 'background-color 0.3s ease-in-out, border-color 0.3s ease-in-out',
-                            border: isHighlighted ? '2px solid #FFD700' : '1px solid transparent',
-                            boxSizing: 'border-box',
-                          }}>
-                          <Box sx={{ display: 'flex', alignItems: 'flex-start', width: '100%' }}>
-                            <Link to={`/profile/${comment.user_id}`} onClick={handleCloseModal}>
-                              <Avatar src={comment.profile_image_url} alt={comment.nickname} sx={{ width: 30, height: 30, marginRight: 1 }} />
+                        <Box
+                          key={comment.id}
+                          id={`comment-${comment.id}`}
+                          sx={{
+                            display: "flex",
+                            flexDirection: "column",
+                            marginBottom: 2,
+                            p: 1,
+                            borderRadius: 1,
+                            backgroundColor: isHighlighted
+                              ? "#FFF0B3"
+                              : isAuthor
+                                ? "#F3F4F6"
+                                : "transparent",
+                            transition:
+                              "background-color 0.3s ease-in-out, border-color 0.3s ease-in-out",
+                            border: isHighlighted
+                              ? "2px solid #FFD700"
+                              : "1px solid transparent",
+                            boxSizing: "border-box",
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "flex-start",
+                              width: "100%",
+                            }}
+                          >
+                            <Link
+                              to={`/profile/${comment.user_id}`}
+                              onClick={handleCloseModal}
+                            >
+                              <Avatar
+                                src={comment.profile_image_url}
+                                alt={comment.nickname}
+                                sx={{ width: 30, height: 30, marginRight: 1 }}
+                              />
                             </Link>
-                          <Box sx={{ flexGrow: 1 }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                              <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
-                                {comment.nickname}
-                              </Typography>
-                              {isAuthor && (
-                                <Typography variant="caption" sx={{ backgroundColor: '#6366F1', color: 'white', px: 0.5, borderRadius: 1, fontSize: '0.6rem' }}>
-                                  작성자
+                            <Box sx={{ flexGrow: 1 }}>
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 0.5,
+                                }}
+                              >
+                                <Typography
+                                  variant="subtitle2"
+                                  sx={{ fontWeight: "bold" }}
+                                >
+                                  {comment.nickname}
+                                </Typography>
+                                {isAuthor && (
+                                  <Typography
+                                    variant="caption"
+                                    sx={{
+                                      backgroundColor: "#6366F1",
+                                      color: "white",
+                                      px: 0.5,
+                                      borderRadius: 1,
+                                      fontSize: "0.6rem",
+                                    }}
+                                  >
+                                    작성자
+                                  </Typography>
+                                )}
+                                <Typography
+                                  variant="caption"
+                                  color="textSecondary"
+                                  sx={{ ml: "auto" }}
+                                >
+                                  {new Date(comment.created_at).toLocaleString(
+                                    "ko-KR",
+                                    {
+                                      year: "numeric",
+                                      month: "numeric",
+                                      day: "numeric",
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    },
+                                  )}
+                                </Typography>
+                              </Box>
+                              {isEditing ? (
+                                <TextField
+                                  fullWidth
+                                  multiline
+                                  value={editedCommentContent}
+                                  onChange={(e) =>
+                                    setEditedCommentContent(e.target.value)
+                                  }
+                                  variant="outlined"
+                                  size="small"
+                                  sx={{ mt: 1, mb: 1 }}
+                                  error={editedCommentContent.length > 500}
+                                  helperText={`${editedCommentContent.length}/500 ${editedCommentContent.length > 500 ? " (500자를초과했습니다)" : ""}`}
+                                />
+                              ) : (
+                                <Typography variant="body2" component="div">
+                                  {parseMentions(
+                                    comment.content,
+                                    comment.resolvedMentions,
+                                  )}
                                 </Typography>
                               )}
-                              <Typography variant="caption" color="textSecondary" sx={{ ml: 'auto' }}>
-                                {new Date(comment.created_at).toLocaleString('ko-KR', {
-                                  year: 'numeric', month: 'numeric', day: 'numeric',
-                                  hour: '2-digit', minute: '2-digit'
-                                })}
-                              </Typography>
                             </Box>
-                            {isEditing ? (
-                              <TextField
-                                fullWidth
-                                multiline
-                                value={editedCommentContent}
-                                onChange={(e) => setEditedCommentContent(e.target.value)}
-                                variant="outlined"
-                                size="small"
-                                sx={{ mt: 1, mb: 1 }}
-                                error={editedCommentContent.length > 500}
-                                helperText={`${editedCommentContent.length}/500 ${editedCommentContent.length > 500 ? ' (500자를초과했습니다)' : ''}`}
-                              />
-                            ) : (
-                              <Typography variant="body2" component="div">{parseMentions(comment.content, comment.resolvedMentions)}</Typography>
+                            {isAuthor && !isEditing && (
+                              <Box sx={{ ml: 1, display: "flex", gap: 0.5 }}>
+                                <IconButton
+                                  size="small"
+                                  onClick={() =>
+                                    handleEditCommentClick(comment)
+                                  }
+                                  color="primary"
+                                >
+                                  <EditIcon fontSize="small" />
+                                </IconButton>
+                                <IconButton
+                                  size="small"
+                                  onClick={() =>
+                                    handleDeleteComment(comment.id)
+                                  }
+                                  color="error"
+                                >
+                                  <DeleteIcon fontSize="small" />
+                                </IconButton>
+                              </Box>
                             )}
                           </Box>
-                          {isAuthor && !isEditing && ( 
-                            <Box sx={{ ml: 1, display: 'flex', gap: 0.5 }}>
-                              <IconButton size="small" onClick={() => handleEditCommentClick(comment)} color="primary">
-                                <EditIcon fontSize="small" />
-                              </IconButton>
-                              <IconButton size="small" onClick={() => handleDeleteComment(comment.id)} color="error">
-                                <DeleteIcon fontSize="small" />
-                              </IconButton>
+                          {isEditing && (
+                            <Box
+                              sx={{
+                                display: "flex",
+                                justifyContent: "flex-end",
+                                gap: 1,
+                                mt: 1,
+                              }}
+                            >
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                onClick={handleCancelEditComment}
+                              >
+                                취소
+                              </Button>
+                              <Button
+                                size="small"
+                                variant="contained"
+                                onClick={() =>
+                                  handleSaveEditedComment(comment.id)
+                                }
+                              >
+                                저장
+                              </Button>
                             </Box>
                           )}
                         </Box>
-                        {isEditing && ( 
-                          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 1 }}>
-                            <Button size="small" variant="outlined" onClick={handleCancelEditComment}>취소</Button>
-                            <Button size="small" variant="contained" onClick={() => handleSaveEditedComment(comment.id)}>저장</Button>
-                          </Box>
-                        )}
-                      </Box>  
                       );
                     })
                   )}
@@ -519,19 +818,23 @@ const Home = ({ currentUser }) => {
                   onChange={(e) => setNewComment(e.target.value)}
                   onKeyPress={(e) => {
                     if (e.key === "Enter") {
-                      handleAddComment()
+                      handleAddComment();
                     }
                   }}
                   multiline
                   maxRows={3}
                   inputProps={{ maxLength: 500 }}
                   error={newComment.length > 500}
-                  helperText={`${newComment.length}/500 ${newComment.length > 500 ? ' (500자를 초과했습니다)' : ''}`}
+                  helperText={`${newComment.length}/500 ${newComment.length > 500 ? " (500자를 초과했습니다)" : ""}`}
                 />
               </DialogContent>
               <DialogActions>
                 <Button onClick={handleCloseModal}>닫기</Button>
-                <Button onClick={handleAddComment} variant="contained" sx={{ backgroundColor: "#6366F1" }}>
+                <Button
+                  onClick={handleAddComment}
+                  variant="contained"
+                  sx={{ backgroundColor: "#6366F1" }}
+                >
                   댓글 작성
                 </Button>
               </DialogActions>
@@ -550,8 +853,11 @@ const Home = ({ currentUser }) => {
                 component="img"
                 src={selectedImageForModal}
                 alt="원본 이미지"
-                onError={(e) => { e.target.src = 'https://via.placeholder.com/300?text=Image+Not+Found'; }}
-                sx={{ width: '100%', height: 'auto', borderRadius: 1 }}
+                onError={(e) => {
+                  e.target.src =
+                    "https://via.placeholder.com/300?text=Image+Not+Found";
+                }}
+                sx={{ width: "100%", height: "auto", borderRadius: 1 }}
               />
             )}
           </DialogContent>
@@ -561,7 +867,7 @@ const Home = ({ currentUser }) => {
         </Dialog>
       </Container>
     </LocalizationProvider>
-  )
-}
+  );
+};
 
-export default Home
+export default Home;

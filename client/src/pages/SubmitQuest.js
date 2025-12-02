@@ -2,11 +2,10 @@
 
 import { useRef, useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { Container, Box, TextField, Button, Typography, Paper, Alert, CircularProgress, IconButton } from "@mui/material"
+import { motion } from "framer-motion"
+import { Container, Box, TextField, Button, Typography, Paper, Alert, CircularProgress, IconButton, Dialog, Backdrop } from "@mui/material"
 import CloseIcon from '@mui/icons-material/Close';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
-import DoneAllIcon from '@mui/icons-material/DoneAll';
-
 
 const SubmitQuest = ({ currentUser, setNavValue }) => {
   const [content, setContent] = useState("");
@@ -19,6 +18,7 @@ const SubmitQuest = ({ currentUser, setNavValue }) => {
   const [questInfo, setQuestInfo] = useState(null)
   const [initialLoading, setInitialLoading] = useState(true)
   const [hasSubmitted, setHasSubmitted] = useState(false)
+  const [openSuccess, setOpenSuccess] = useState(false)
 
   useEffect(() => {
     fetchTodayQuestInfo()
@@ -47,7 +47,8 @@ const SubmitQuest = ({ currentUser, setNavValue }) => {
     const newFiles = Array.from(e.target.files);
 
     if (selectedFiles.length + newFiles.length > 5) {
-      alert("이미지는 최대 5개까지 업로드할 수 있습니다.");
+      setError("이미지는 최대 5개까지 업로드할 수 있습니다.");
+      setTimeout(() => setError(""), 3000);
       return;
     }
 
@@ -71,14 +72,17 @@ const SubmitQuest = ({ currentUser, setNavValue }) => {
 
     if (!files || files.length === 0) {
       setError("이미지를 선택해주세요.");
+      setTimeout(() => setError(""), 3000);
       return;
     }
     if (files.length > 5) {
       setError("이미지는 최대 5개까지 업로드할 수 있습니다.");
+      setTimeout(() => setError(""), 3000);
       return;
     }
     if (content.trim().length < 10 || content.trim().length > 500) {
       setError("내용은 10자 이상 500자 이하로 입력해주세요.");
+      setTimeout(() => setError(""), 3000);
       return;
     }
 
@@ -103,13 +107,14 @@ const SubmitQuest = ({ currentUser, setNavValue }) => {
 
       if (!response.ok) {
         setError(data.message || "제출 실패");
+        setTimeout(() => setError(""), 3000);
         return;
       }
 
-      navigate("/today-quest");
-      setNavValue(1);
+      setOpenSuccess(true);
     } catch (err) {
       setError("서버 연결 오류");
+      setTimeout(() => setError(""), 3000);
     } finally {
       setLoading(false);
     }
@@ -169,36 +174,64 @@ const SubmitQuest = ({ currentUser, setNavValue }) => {
           </Typography>
 
           {error && (
-            <Alert severity="error" sx={{ marginBottom: 2 }}>
+            <Box
+              sx={{
+                mb: 2,
+                p: 1.5,
+                borderRadius: 2,
+                backgroundColor: "rgba(255, 0, 0, 0.1)",
+                color: "red",
+                textAlign: "center",
+                fontWeight: "bold",
+                fontFamily: 'Roboto, sans-serif',
+              }}
+            >
               {error}
-            </Alert>
+            </Box>
           )}
 
-          <Box sx={{ textAlign: "center", marginBottom: 2 }}>
+          <Box sx={{ textAlign: "center", mb: 2 }}>
             {previews.length > 0 && (
-              <Box sx={{ display: 'flex', gap: 1, overflowX: 'auto', padding: 1, border: '1px solid #ddd', borderRadius: 1 }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  gap: 1,
+                  overflowX: "auto",
+                  padding: 1,
+                  borderRadius: 2,
+                  "&::-webkit-scrollbar": { height: 6 },
+                  "&::-webkit-scrollbar-thumb": { backgroundColor: "#ccc", borderRadius: 3 },
+                }}
+              >
                 {previews.map((previewUrl, index) => (
                   <Box
                     key={index}
-                    sx={{ position: 'relative', flexShrink: 0 }}
+                    sx={{
+                      position: "relative",
+                      flexShrink: 0,
+                      width: 120,
+                      height: 120,
+                      borderRadius: 1,
+                      overflow: "hidden",
+                      boxShadow: "0 1px 4px rgba(0,0,0,0.1)",
+                      "&:hover": { boxShadow: "0 3px 8px rgba(0,0,0,0.2)" },
+                    }}
                   >
                     <Box
                       component="img"
                       src={previewUrl}
                       alt={`Preview ${index + 1}`}
-                      sx={{ width: 150, height: 150, borderRadius: 1, objectFit: "cover" }}
+                      sx={{ width: "100%", height: "100%", objectFit: "cover" }}
                     />
                     <IconButton
                       size="small"
                       onClick={() => handleRemoveImage(index)}
                       sx={{
-                        position: 'absolute',
+                        position: "absolute",
                         top: 2,
                         right: 2,
-                        backgroundColor: 'rgba(255, 255, 255, 0.7)',
-                        '&:hover': {
-                          backgroundColor: 'rgba(255, 255, 255, 1)',
-                        }
+                        backgroundColor: "rgba(255, 255, 255, 0.8)",
+                        "&:hover": { backgroundColor: "rgba(255, 255, 255, 1)" },
                       }}
                     >
                       <CloseIcon fontSize="small" />
@@ -209,7 +242,21 @@ const SubmitQuest = ({ currentUser, setNavValue }) => {
             )}
           </Box>
 
-          <Button variant="outlined" component="label" fullWidth sx={{ marginBottom: 2 }}>
+
+          <Button
+            variant="outlined"
+            component="label"
+            fullWidth
+            sx={{
+              mb: 2,
+              borderRadius: 2,
+              borderColor: "#6366F1",
+              color: "#6366F1",
+              height: 42,
+              fontWeight: "bold",
+              "&:hover": { borderColor: "#4f46e5", backgroundColor: "rgba(99,102,241,0.08)" },
+            }}
+          >
             이미지 선택 (최대 5개)
             <input hidden type="file" ref={imageRef} onChange={handleImageChange} accept="image/*" multiple /> 
           </Button>
@@ -218,7 +265,8 @@ const SubmitQuest = ({ currentUser, setNavValue }) => {
             fullWidth
             label="오늘의 인증"
             multiline
-            rows={6}
+            minRows={4}       
+            maxRows={20}       
             value={content}
             onChange={(e) => setContent(e.target.value)}
             margin="normal"
@@ -230,25 +278,126 @@ const SubmitQuest = ({ currentUser, setNavValue }) => {
                 ? `${content.length} / 500` 
                 : "10자 이상 500자 이하로 작성해주세요."
             }
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                borderRadius: 2,
+                padding: "6px 10px",
+                "&.Mui-focused fieldset": {
+                  borderColor: "#6366F1",
+                  borderWidth: 1.5,
+                },
+              },
+              "& .MuiFormHelperText-root": {
+                fontSize: "12px",
+                color: content.length > 500 ? "red" : "#777",
+                marginTop: "4px",
+              },
+            }}
           />
 
-          <Button
-            fullWidth
-            variant="contained"
-            sx={{ marginTop: 2, backgroundColor: "#6366F1" }}
-            onClick={handleSubmit}
-            disabled={loading}
-          >
-            {loading ? "제출 중..." : "제출하기"}
-          </Button>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+            <Button
+              fullWidth
+              variant="contained"
+              sx={{
+                borderRadius: 2,
+                backgroundColor: "#6366F1",
+                height: 42,
+                fontWeight: "bold",
+                "&:hover": { backgroundColor: "#4f46e5" },
+              }}
+              onClick={handleSubmit}
+              disabled={loading}
+            >
+              {loading ? "제출 중..." : "제출하기"}
+            </Button>
 
-          <Box sx={{ textAlign: "center", marginTop: 2 }}>
-            <Button color="primary" onClick={() => navigate("/today-quest")} sx={{ textTransform: "none" }}>
+            <Button
+              fullWidth
+              variant="outlined"
+              sx={{
+                borderRadius: 2,
+                borderColor: "#6366F1",
+                color: "#6366F1",
+                height: 42,
+                fontWeight: "bold",
+                textTransform: "none",
+                "&:hover": { borderColor: "#4f46e5", backgroundColor: "rgba(99,102,241,0.08)" },
+              }}
+              onClick={() => navigate("/today-quest")}
+            >
               취소
             </Button>
           </Box>
         </Paper>
       </Box>
+      <Dialog
+        open={openSuccess}
+        onClose={() => {
+          setOpenSuccess(false);
+          navigate("/today-quest");
+          setNavValue(1);
+        }}
+        disableAutoFocus
+        disableEnforceFocus
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            padding: 3,
+            width: 400,
+            maxWidth: "90%",
+            textAlign: "center",
+            overflow: "hidden",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.2)",
+            background: "rgba(255,255,255,0.95)", 
+            backdropFilter: "blur(8px)",
+          },
+          component: motion.div,
+          initial: { scale: 0.8, opacity: 0 },
+          animate: { scale: 1, opacity: 1 },
+          exit: { scale: 0.8, opacity: 0 },
+          transition: { type: "spring", stiffness: 300, damping: 25 },
+        }}
+        sx={{
+          "& .MuiBackdrop-root": {
+            backgroundColor: "rgba(0,0,0,0.3)",
+          },
+        }}
+      >
+        <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
+          <CheckCircleOutlineIcon sx={{ fontSize: 60, color: "#4ade80" }} />
+        </Box>
+
+        <Typography variant="h6" sx={{ fontWeight: "bold", mb: 1 }}>
+          오늘의 퀘스트 완료!
+        </Typography>
+
+        <Typography variant="body2" sx={{ color: "text.secondary", mb: 3 }}>
+          오늘의 퀘스트가 성공적으로 제출되었습니다.<br />
+          내일 다시 도전해보세요!
+        </Typography>
+
+        <Button
+          variant="contained"
+          fullWidth
+          sx={{
+            backgroundColor: "#6366F1",
+            "&:hover": { backgroundColor: "#4f46e5" },
+            borderRadius: 2,
+            height: 44,
+            fontWeight: "bold",
+            textTransform: "none",
+            boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
+          }}
+          onClick={() => {
+            setOpenSuccess(false);
+            navigate("/today-quest");
+            setNavValue(1);
+          }}
+        >
+          확인
+        </Button>
+      </Dialog>
     </Container>
   )
 }
