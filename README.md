@@ -180,6 +180,12 @@ erDiagram
 ## 화면 시연
 
 <p align="center">
+  <img src="./docs/screenshots/Login1.PNG" alt="로그인 화면" width="320" />
+  <br />
+  <sub>로그인 화면</sub>
+</p>
+
+<p align="center">
   <img src="./docs/screenshots/TodayQuest1.PNG" alt="오늘의 퀘스트 화면" width="320" />
   <br />
   <sub>오늘의 퀘스트 화면</sub>
