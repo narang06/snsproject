@@ -179,21 +179,41 @@ erDiagram
 ---
 ## 화면 시연
 
-### 오늘의 퀘스트 / 제출
-![오늘의 퀘스트 화면](./docs/screenshots/TodayQuest1.PNG)
-![퀘스트 제출 화면](./docs/screenshots/SubmitQuest1.PNG)
+<p align="center">
+  <img src="./docs/screenshots/TodayQuest1.PNG" alt="오늘의 퀘스트 화면" width="320" />
+  <br />
+  <sub>오늘의 퀘스트 화면</sub>
+</p>
 
-### 홈 피드
-![홈 화면1](./docs/screenshots/Home1.PNG)
-![홈 화면2](./docs/screenshots/Home2.PNG)
+<p align="center">
+  <img src="./docs/screenshots/SubmitQuest1.PNG" alt="퀘스트 제출 화면" width="320" />
+  <br />
+  <sub>퀘스트 제출 화면</sub>
+</p>
 
-### 프로필
-![프로필 화면](./docs/screenshots/Profile1.PNG)
+<p align="center">
+  <img src="./docs/screenshots/Home1.PNG" alt="홈 화면 1" width="320" />
+  <br />
+  <sub>홈 화면 1</sub>
+</p>
 
-### 알림
-![알림 화면](./docs/screenshots/Notifications1.PNG)
+<p align="center">
+  <img src="./docs/screenshots/Home2.PNG" alt="홈 화면 2" width="320" />
+  <br />
+  <sub>홈 화면 2</sub>
+</p>
 
----
+<p align="center">
+  <img src="./docs/screenshots/Profile1.PNG" alt="프로필 화면" width="320" />
+  <br />
+  <sub>프로필 화면</sub>
+</p>
+
+<p align="center">
+  <img src="./docs/screenshots/Notifications1.PNG" alt="알림 화면" width="320" />
+  <br />
+  <sub>알림 화면</sub>
+</p>
 
 ## 설치 및 실행 방법
 
