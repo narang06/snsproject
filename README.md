@@ -177,18 +177,73 @@ erDiagram
 ```
 
 ---
-화면 시연
+## 화면 시연
 
-
+### 오늘의 퀘스트 / 제출
 ![오늘의 퀘스트 화면](./docs/screenshots/TodayQuest1.PNG)
-
 ![퀘스트 제출 화면](./docs/screenshots/SubmitQuest1.PNG)
 
+### 홈 피드
 ![홈 화면1](./docs/screenshots/Home1.PNG)
-
 ![홈 화면2](./docs/screenshots/Home2.PNG)
 
+### 프로필
 ![프로필 화면](./docs/screenshots/Profile1.PNG)
 
+### 알림
 ![알림 화면](./docs/screenshots/Notifications1.PNG)
+
+---
+
+## 설치 및 실행 방법
+
+### 사전 준비
+*   Node.js (LTS 버전 권장)
+*   MySQL 데이터베이스 서버
+
+### 1. 데이터베이스 설정
+1.  MySQL 서버를 실행합니다.
+2.  데이터베이스를 생성합니다. (예: `CREATE DATABASE questly_db;`)
+3.  `snsproject/server/db.js` 파일을 확인하여 데이터베이스 연결 정보가 올바른지 확인합니다.
+    *   `host`, `user`, `password`, `database` 정보가 필요합니다.
+4.  필요한 테이블 스키마를 생성합니다. (스키마 파일이 있다면 해당 스크립트를 실행합니다.)
+
+### 2. 서버 설정 및 실행
+1.  `snsproject/server` 디렉토리로 이동합니다.
+    ```bash
+    cd snsproject/server
+    ```
+2.  의존성 패키지를 설치합니다.
+    ```bash
+    npm install
+    ```
+3.  `.env` 파일을 생성하고 다음 환경 변수를 설정합니다. (예시)
+    ```
+    PORT=3010
+    DB_HOST=localhost
+    DB_USER=root
+    DB_PASSWORD=your_mysql_password
+    DB_NAME=questly_db
+    JWT_SECRET=your-secret-key-for-jwt-token
+    ```
+4.  서버를 실행합니다.
+    ```bash
+    npm start
+    # 또는 개발 모드: npm run dev
+    ```
+
+### 3. 클라이언트 설정 및 실행
+1.  `snsproject/client` 디렉토리로 이동합니다.
+    ```bash
+    cd snsproject/client
+    ```
+2.  의존성 패키지를 설치합니다.
+    ```bash
+    npm install
+    ```
+3.  클라이언트 애플리케이션을 실행합니다.
+    ```bash
+    npm start
+    ```
+4.  웹 브라우저에서 `http://localhost:3000` (기본값)으로 접속합니다.
 
