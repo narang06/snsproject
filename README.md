@@ -219,12 +219,12 @@ erDiagram
     ```
 3.  `.env` 파일을 생성하고 다음 환경 변수를 설정합니다. (예시)
     ```
-    PORT=3010
-    DB_HOST=localhost
-    DB_USER=root
-    DB_PASSWORD=your_mysql_password
-    DB_NAME=questly_db
-    JWT_SECRET=your-secret-key-for-jwt-token
+    PORT='3010'
+    DB_HOST='localhost'
+    DB_USER='root'
+    DB_PASSWORD='your_mysql_password'
+    DB_NAME='questly_db'
+    JWT_SECRET='your-secret-key-for-jwt-token'
     ```
 4.  서버를 실행합니다.
     ```bash
@@ -246,4 +246,13 @@ erDiagram
     npm start
     ```
 4.  웹 브라우저에서 `http://localhost:3000` (기본값)으로 접속합니다.
+
+---
+## 개발자 정보
+
+- 이름: 이민형
+- GitHub: [narang06](https://github.com/narang06)
+- Email: [sinso5281532@gmail.com](mailto:sinso5281532@gmail.com)
+
+
 
