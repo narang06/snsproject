@@ -1,33 +1,82 @@
 # Questly - 데일리 소셜 챌린지 SNS
 
 ## 프로젝트 소개
-[ "사용자들이 매일 새로운 챌린지에 참여하고, 자신의 경험을 공유하며, 다른 사용자들과 소통할 수 있는 소셜 네트워킹 서비스입니다."]
+**Questly**는 일상 속 소소한 챌린지를 통해 동기 부여를 얻고,  
+같은 목표를 가진 사람들과 소통하며 함께 성장하는 데 중점을 둔 소셜 네트워킹 서비스입니다.
+
+- 매일 하나의 공통 퀘스트가 주어지고,
+- 사용자는 인증 사진과 글을 업로드해 참여하며,
+- 팔로우, 좋아요, 댓글, 멘션, 알림을 통해 서로 소통할 수 있습니다.
 
 ## 주요 기능
-*   사용자 인증 (회원가입, 로그인)
-*   프로필 관리 (자기소개, 프로필 이미지 변경)
-*   일일 퀘스트 조회 및 참여
-*   퀘스트 제출 및 다른 사용자 게시물 조회
-*   게시물 좋아요 및 댓글 작성
-*   사용자 팔로우/언팔로우
-*   실시간 알림 (팔로우, 좋아요, 댓글 등)
+
+- **사용자 인증**
+  - 회원가입, 로그인 (JWT 기반 인증)
+- **프로필 관리**
+  - 자기소개(bio) 수정
+  - 프로필 이미지 업로드 / 변경
+- **오늘의 퀘스트**
+  - 매일 1개의 퀘스트가 자동 선정
+  - 오늘의 퀘스트 상세 내용 조회
+- **퀘스트 제출 및 피드**
+  - 오늘의 퀘스트 인증 게시물 작성 (사진 + 텍스트)
+  - 다른 사용자의 인증 게시물 목록 조회
+- **피드 인터랙션**
+  - 게시물 좋아요 / 좋아요 취소
+  - 댓글 작성, 수정, 삭제
+  - 멘션 기능 (@닉네임#태그)
+- **팔로우 기능**
+  - 팔로우 / 언팔로우
+  - 프로필에서 팔로워 / 팔로잉 목록 확인
+- **알림**
+  - 팔로우, 좋아요, 댓글, 멘션 발생 시 알림 생성
+  - 알림 읽음 처리
+
+---
 
 ## 기술 스택
+
 ### 클라이언트 (Frontend)
-*   **React**: UI 개발을 위한 JavaScript 라이브러리
-*   **Material UI (MUI)**: 현대적인 UI 컴포넌트 라이브러리
-*   **React Router DOM**: 클라이언트 사이드 라우팅
-*   **Emotion**: CSS-in-JS 라이브러리
-*   **JWT Decode**: JWT 토큰 디코딩
+
+<p>
+  <img src="https://img.shields.io/badge/React-61DAFB?style=for-the-badge&logo=react&logoColor=white" />
+  <img src="https://img.shields.io/badge/MUI-007FFF?style=for-the-badge&logo=mui&logoColor=white" />
+  <img src="https://img.shields.io/badge/React_Router-CA4245?style=for-the-badge&logo=react-router&logoColor=white" />
+</p>
+
+- **React**: SPA 기반 UI 개발
+- **MUI (Material UI)**: 반응형 UI 컴포넌트
+- **React Router DOM**: 클라이언트 사이드 라우팅
+- **Emotion**: CSS-in-JS 스타일링
+- **jwt-decode**: JWT 토큰 파싱 및 사용자 정보 확인
 
 ### 서버 (Backend)
-*   **Node.js & Express.js**: 백엔드 API 서버
-*   **MySQL2**: MySQL 데이터베이스 클라이언트
-*   **bcrypt / jsonwebtoken**: 사용자 인증 및 보안
-*   **multer**: 파일 업로드 처리
-*   **cors**: 교차 출처 리소스 공유
-*   **dotenv**: 환경 변수 관리
-*   **node-cron**: 스케줄링 작업
+
+<p>
+  <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white" />
+  <img src="https://img.shields.io/badge/Express-000000?style=for-the-badge&logo=express&logoColor=white" />
+  <img src="https://img.shields.io/badge/MySQL-4479A1?style=for-the-badge&logo=mysql&logoColor=white" />
+</p>
+
+- **Node.js + Express**
+  - REST API 서버 구현
+  - 인증 미들웨어, 라우팅, 에러 핸들링
+- **MySQL**
+  - RDB 기반 데이터 저장
+  - 사용자, 퀘스트, 제출물, 댓글, 좋아요, 팔로우, 알림 관리
+- **bcrypt / jsonwebtoken**
+  - 비밀번호 해시 처리
+  - JWT 기반 인증/인가
+- **multer**
+  - 이미지 업로드 (프로필, 제출물 이미지)
+- **cors**
+  - CORS 설정
+- **dotenv**
+  - 환경 변수 관리
+- **node-cron**
+  - 정기 작업 스케줄링 (예: 퀘스트 관련 배치 작업 확장 가능)
+
+---
 
 ## 설치 및 실행 방법
 
