@@ -78,6 +78,26 @@
 
 ---
 
+## 데이터베이스 ERD
+
+아래는 Questly에서 사용하는 주요 테이블 간 관계를 정리한 ERD입니다.
+
+- `users`  
+  - 기본 사용자 정보 (닉네임, 이메일, 프로필, bio)
+  - `submissions`, `comments`, `likes`, `follows`, `notifications`의 중심이 되는 엔터티
+- `quests`, `daily_quests`  
+  - `quests`: 퀘스트 마스터 데이터  
+  - `daily_quests`: 특정 날짜에 어떤 퀘스트가 오늘의 퀘스트인지 매핑
+- `submissions`  
+  - 사용자가 특정 `daily_quests`에 대해 올린 인증 게시물
+- `comments`, `likes`  
+  - `submissions`에 대한 댓글 및 좋아요 정보
+- `follows`  
+  - 사용자 간 팔로우 관계 (follower / following)
+- `notifications`  
+  - 팔로우, 좋아요, 댓글, 멘션 등 이벤트를 기반으로 생성되는 알림
+
+
 ## 설치 및 실행 방법
 
 ### 사전 준비
