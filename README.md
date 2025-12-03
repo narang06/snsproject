@@ -1,33 +1,219 @@
 # Questly - 데일리 소셜 챌린지 SNS
 
+## 목차
+
+- [프로젝트 소개](#프로젝트-소개)
+- [주요 기능](#주요-기능)
+- [기술 스택](#기술-스택)
+- [데이터베이스 ERD](#데이터베이스-erd)
+- [화면 시연](#화면-시연)
+- [설치 및 실행 방법](#설치-및-실행-방법)
+- [개발자 정보](#개발자-정보)
+
+---
+
 ## 프로젝트 소개
-[ "사용자들이 매일 새로운 챌린지에 참여하고, 자신의 경험을 공유하며, 다른 사용자들과 소통할 수 있는 소셜 네트워킹 서비스입니다."]
+**Questly**는 일상 속 소소한 챌린지를 통해 동기 부여를 얻고,  
+같은 목표를 가진 사람들과 소통하며 함께 성장하는 데 중점을 둔 소셜 네트워킹 서비스입니다.
+
+- 매일 하나의 공통 퀘스트가 주어지고,
+- 사용자는 인증 사진과 글을 업로드해 참여하며,
+- 팔로우, 좋아요, 댓글, 멘션, 알림을 통해 서로 소통할 수 있습니다.
+
+---
 
 ## 주요 기능
-*   사용자 인증 (회원가입, 로그인)
-*   프로필 관리 (자기소개, 프로필 이미지 변경)
-*   일일 퀘스트 조회 및 참여
-*   퀘스트 제출 및 다른 사용자 게시물 조회
-*   게시물 좋아요 및 댓글 작성
-*   사용자 팔로우/언팔로우
-*   실시간 알림 (팔로우, 좋아요, 댓글 등)
+
+- **사용자 인증**
+  - 회원가입, 로그인 (JWT 기반 인증)
+- **프로필 관리**
+  - 자기소개(bio) 수정
+  - 프로필 이미지 업로드 / 변경
+- **오늘의 퀘스트**
+  - 매일 1개의 퀘스트가 자동 선정
+  - 오늘의 퀘스트 상세 내용 조회
+- **퀘스트 제출 및 피드**
+  - 오늘의 퀘스트 인증 게시물 작성 (사진 + 텍스트)
+  - 다른 사용자의 인증 게시물 목록 조회
+- **피드 인터랙션**
+  - 게시물 좋아요 / 좋아요 취소
+  - 댓글 작성, 수정, 삭제
+  - 멘션 기능 (@닉네임#태그)
+- **팔로우 기능**
+  - 팔로우 / 언팔로우
+  - 프로필에서 팔로워 / 팔로잉 목록 확인
+- **알림**
+  - 팔로우, 좋아요, 댓글, 멘션 발생 시 알림 생성
+  - 알림 읽음 처리
+
+---
 
 ## 기술 스택
+
 ### 클라이언트 (Frontend)
-*   **React**: UI 개발을 위한 JavaScript 라이브러리
-*   **Material UI (MUI)**: 현대적인 UI 컴포넌트 라이브러리
-*   **React Router DOM**: 클라이언트 사이드 라우팅
-*   **Emotion**: CSS-in-JS 라이브러리
-*   **JWT Decode**: JWT 토큰 디코딩
+
+<p>
+  <img src="https://img.shields.io/badge/React-61DAFB?style=for-the-badge&logo=react&logoColor=white" />
+  <img src="https://img.shields.io/badge/MUI-007FFF?style=for-the-badge&logo=mui&logoColor=white" />
+  <img src="https://img.shields.io/badge/React_Router-CA4245?style=for-the-badge&logo=react-router&logoColor=white" />
+</p>
+
+- **React**: SPA 기반 UI 개발
+- **MUI (Material UI)**: 반응형 UI 컴포넌트
+- **React Router DOM**: 클라이언트 사이드 라우팅
+- **Emotion**: CSS-in-JS 스타일링
+- **jwt-decode**: JWT 토큰 파싱 및 사용자 정보 확인
 
 ### 서버 (Backend)
-*   **Node.js & Express.js**: 백엔드 API 서버
-*   **MySQL2**: MySQL 데이터베이스 클라이언트
-*   **bcrypt / jsonwebtoken**: 사용자 인증 및 보안
-*   **multer**: 파일 업로드 처리
-*   **cors**: 교차 출처 리소스 공유
-*   **dotenv**: 환경 변수 관리
-*   **node-cron**: 스케줄링 작업
+
+<p>
+  <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white" />
+  <img src="https://img.shields.io/badge/Express-000000?style=for-the-badge&logo=express&logoColor=white" />
+  <img src="https://img.shields.io/badge/MySQL-4479A1?style=for-the-badge&logo=mysql&logoColor=white" />
+</p>
+
+- **Node.js + Express**
+  - REST API 서버 구현
+  - 인증 미들웨어, 라우팅, 에러 핸들링
+- **MySQL**
+  - RDB 기반 데이터 저장
+  - 사용자, 퀘스트, 제출물, 댓글, 좋아요, 팔로우, 알림 관리
+- **bcrypt / jsonwebtoken**
+  - 비밀번호 해시 처리
+  - JWT 기반 인증/인가
+- **multer**
+  - 이미지 업로드 (프로필, 제출물 이미지)
+- **cors**
+  - CORS 설정
+- **dotenv**
+  - 환경 변수 관리
+- **node-cron**
+  - 정기 작업 스케줄링 (예: 퀘스트 관련 배치 작업 확장 가능)
+
+---
+
+## 데이터베이스 ERD
+
+아래는 Questly에서 사용하는 주요 테이블 간 관계를 정리한 ERD입니다.
+
+- `users`  
+  - 기본 사용자 정보 (닉네임, 이메일, 프로필, bio)
+  - `submissions`, `comments`, `likes`, `follows`, `notifications`의 중심이 되는 엔터티
+- `quests`, `daily_quests`  
+  - `quests`: 퀘스트 마스터 데이터  
+  - `daily_quests`: 특정 날짜에 어떤 퀘스트가 오늘의 퀘스트인지 매핑
+- `submissions`  
+  - 사용자가 특정 `daily_quests`에 대해 올린 인증 게시물
+- `comments`, `likes`  
+  - `submissions`에 대한 댓글 및 좋아요 정보
+- `follows`  
+  - 사용자 간 팔로우 관계 (follower / following)
+- `notifications`  
+  - 팔로우, 좋아요, 댓글, 멘션 등 이벤트를 기반으로 생성되는 알림
+
+```mermaid
+erDiagram
+    USERS {
+        bigint id PK
+        varchar nickname
+        varchar nickname_tag
+    }
+
+    QUESTS {
+        int id PK
+        varchar title
+    }
+
+    DAILY_QUESTS {
+        int id PK
+        int quest_id FK
+        date date
+    }
+
+    SUBMISSIONS {
+        bigint id PK
+        bigint user_id FK
+        int daily_quest_id FK
+    }
+
+    COMMENTS {
+        bigint id PK
+        bigint submission_id FK
+        bigint user_id FK
+    }
+
+    LIKES {
+        bigint submission_id FK
+        bigint user_id FK
+    }
+
+    FOLLOWS {
+        bigint follower_id FK
+        bigint following_id FK
+    }
+
+    NOTIFICATIONS {
+        bigint id PK
+        bigint recipient_id FK
+        bigint sender_id FK
+        varchar type
+    }
+
+    USERS ||--o{ SUBMISSIONS : "writes"
+    USERS ||--o{ COMMENTS : "writes"
+    USERS ||--o{ LIKES : "likes"
+    USERS ||--o{ FOLLOWS : "follows"
+    USERS ||--o{ NOTIFICATIONS : "receives"
+
+    QUESTS ||--o{ DAILY_QUESTS : "daily-for"
+    DAILY_QUESTS ||--o{ SUBMISSIONS : "has"
+
+    SUBMISSIONS ||--o{ COMMENTS : "has"
+    SUBMISSIONS ||--o{ LIKES : "has"
+    SUBMISSIONS ||--o{ NOTIFICATIONS : "target"
+
+    COMMENTS ||--o{ NOTIFICATIONS : "comment-target"
+
+```
+
+---
+## 화면 시연
+
+<p align="center">
+  <img src="./docs/screenshots/TodayQuest1.PNG" alt="오늘의 퀘스트 화면" width="320" />
+  <br />
+  <sub>오늘의 퀘스트 화면</sub>
+</p>
+
+<p align="center">
+  <img src="./docs/screenshots/SubmitQuest1.PNG" alt="퀘스트 제출 화면" width="320" />
+  <br />
+  <sub>퀘스트 제출 화면</sub>
+</p>
+
+<p align="center">
+  <img src="./docs/screenshots/Home1.PNG" alt="홈 화면 1" width="320" />
+  <br />
+  <sub>홈 화면 1</sub>
+</p>
+
+<p align="center">
+  <img src="./docs/screenshots/Home2.PNG" alt="홈 화면 2" width="320" />
+  <br />
+  <sub>홈 화면 2</sub>
+</p>
+
+<p align="center">
+  <img src="./docs/screenshots/Profile1.PNG" alt="프로필 화면" width="320" />
+  <br />
+  <sub>프로필 화면</sub>
+</p>
+
+<p align="center">
+  <img src="./docs/screenshots/Notifications1.PNG" alt="알림 화면" width="320" />
+  <br />
+  <sub>알림 화면</sub>
+</p>
 
 ## 설치 및 실행 방법
 
@@ -53,12 +239,12 @@
     ```
 3.  `.env` 파일을 생성하고 다음 환경 변수를 설정합니다. (예시)
     ```
-    PORT=3010
-    DB_HOST=localhost
-    DB_USER=root
-    DB_PASSWORD=your_mysql_password
-    DB_NAME=questly_db
-    JWT_SECRET=your-secret-key-for-jwt-token
+    PORT='3010'
+    DB_HOST='localhost'
+    DB_USER='root'
+    DB_PASSWORD='your_mysql_password'
+    DB_NAME='questly_db'
+    JWT_SECRET='your-secret-key-for-jwt-token'
     ```
 4.  서버를 실행합니다.
     ```bash
@@ -81,5 +267,12 @@
     ```
 4.  웹 브라우저에서 `http://localhost:3000` (기본값)으로 접속합니다.
 
+---
 ## 개발자 정보
-[여기에 개발자 정보를 작성해주세요. 예: "홍길동 (gildong.hong@example.com)"]
+
+- 이름: 이민형
+- GitHub: [narang06](https://github.com/narang06)
+- Email: [sinso5281532@gmail.com](mailto:sinso5281532@gmail.com)
+
+
+
