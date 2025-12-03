@@ -34,8 +34,6 @@ const Profile = ({ currentUser, onLogout }) => {
     setSubmissions,
     likedSubmissions,
     setLikedSubmissions,
-    handleLikeInContext,
-    updateSubmissionCommentCount,
   } = useSubmissions();
   const [localSubmissions, setLocalSubmissions] = useState([]);
   const [page, setPage] = useState(1);
@@ -385,17 +383,37 @@ const Profile = ({ currentUser, onLogout }) => {
       );
       const data = await response.json();
       if (response.ok) {
-        setLocalSubmissions((prev) =>
-          page === 1 ? data.submissions : [...prev, ...data.submissions],
-        );
-        setHasMore(data.hasMore);
+      setLocalSubmissions((prev) =>
+        page === 1 ? data.submissions : [...prev, ...data.submissions],
+      );
+      setHasMore(data.hasMore);
+
+      if (page === 1) {
+        const newLiked = new Set();
+        data.submissions.forEach((s) => {
+          if (s.isLiked === 1 || s.isLiked === true) {
+            newLiked.add(s.id);
+          }
+        });
+        setLikedSubmissions(newLiked);
+      } else {
+        setLikedSubmissions((prev) => {
+          const merged = new Set(prev);
+          data.submissions.forEach((s) => {
+            if (s.isLiked === 1 || s.isLiked === true) {
+              merged.add(s.id);
+            }
+          });
+          return merged;
+        });
       }
+    }
     } catch (err) {
       console.error("사용자 제출물 로드 실패:", err);
     } finally {
       setLoadingMore(false);
     }
-  }, [userId, page]);
+  }, [userId, page, setLikedSubmissions]);
 
   // Reset state when userId changes
   useEffect(() => {
@@ -699,6 +717,65 @@ const Profile = ({ currentUser, onLogout }) => {
     }
   };
 
+  const handleLikeForProfile = useCallback(
+    async (submission) => {
+      try {
+        const token = localStorage.getItem("token");
+        const isLiked = likedSubmissions.has(submission.id);
+
+        const response = await fetch("http://localhost:3010/likes", {
+          method: isLiked ? "DELETE" : "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ submissionId: submission.id }),
+        });
+
+        if (!response.ok) {
+          const data = await response.json();
+          alert(data.message || "좋아요 처리 실패");
+          return;
+        }
+
+        const resultData = await response.json();
+
+        // 1) 좋아요 Set 업데이트
+        const newLiked = new Set(likedSubmissions);
+        if (isLiked) {
+          newLiked.delete(submission.id);
+        } else {
+          newLiked.add(submission.id);
+        }
+        setLikedSubmissions(newLiked);
+
+        // 2) 프로필 화면에 보이는 localSubmissions 의 likeCount 업데이트
+        setLocalSubmissions((prev) =>
+          prev.map((s) =>
+            s.id === submission.id
+              ? {
+                  ...s,
+                  likeCount: isLiked ? s.likeCount - 1 : s.likeCount + 1,
+                  isLiked:
+                    resultData.isLiked !== undefined
+                      ? resultData.isLiked
+                      : !isLiked,
+                }
+              : s,
+          ),
+        );
+      } catch (err) {
+        console.error("좋아요 실패:", err);
+        alert("서버 연결 오류");
+      }
+    },
+    [likedSubmissions, setLikedSubmissions],
+  );
+
+
+
+
+
   const handleOpenImageModal = (imageUrl) => {
     setSelectedImageForModal(imageUrl);
     setImageModalOpen(true);
@@ -965,7 +1042,7 @@ const Profile = ({ currentUser, onLogout }) => {
               submission={submission}
               handleOpenModal={handleOpenModal}
               handleOpenImageModal={handleOpenImageModal}
-              handleLike={handleLikeInContext}
+              handleLike={handleLikeForProfile}
               likedSubmissions={likedSubmissions}
               currentUserId={currentUser?.userId}
               onDeleteSubmission={handleDeleteSubmission}
@@ -1386,7 +1463,6 @@ const Profile = ({ currentUser, onLogout }) => {
             </Button>
           </Box>
 
-          {/* Content Text Editor UI */}
           <TextField
             autoFocus
             margin="dense"

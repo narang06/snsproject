@@ -46,8 +46,24 @@ export const SubmissionsProvider = ({ children }) => {
         if (response.ok) {
           if (newPage === 1) {
             setSubmissions(data.submissions);
+            const newLiked = new Set();
+            data.submissions.forEach(s => {
+              if (s.isLiked === 1) {
+                newLiked.add(s.id);
+              }
+            });
+            setLikedSubmissions(newLiked);
           } else {
             setSubmissions((prev) => [...prev, ...data.submissions]);
+            setLikedSubmissions((prev) => {
+              const merged = new Set(prev);
+              data.submissions.forEach(s => {
+                if (s.isLiked === 1) {
+                  merged.add(s.id);
+                }
+              });
+              return merged;
+            });
           }
           setHasMore(data.hasMore);
           setPage(newPage);
@@ -81,12 +97,11 @@ export const SubmissionsProvider = ({ children }) => {
     }
   }, [hasMore, loadingMore, page, fetchSubmissions, currentFilters]);
 
-  // Filters are now managed here, and fetchSubmissions is triggered from here
   const updateFiltersAndFetch = useCallback(
     (date, query, sort) => {
       setCurrentFilters({ date, query, sort });
-      setPage(1); // Reset to first page on filter change
-      setHasMore(true); // Assume there's more data for new filters
+      setPage(1); 
+      setHasMore(true); 
       fetchSubmissions(1, date, query, sort);
     },
     [fetchSubmissions],
@@ -137,7 +152,7 @@ export const SubmissionsProvider = ({ children }) => {
       }
     },
     [likedSubmissions],
-  ); // 이 함수는 likedSubmissions 상태에 의존
+  ); 
 
   const updateSubmissionCommentCount = useCallback((submissionId, change) => {
     setSubmissions((prevSubmissions) =>
@@ -152,15 +167,15 @@ export const SubmissionsProvider = ({ children }) => {
   const value = useMemo(
     () => ({
       submissions,
-      setSubmissions, // For specific cases where direct manipulation is needed
+      setSubmissions, 
       page,
       hasMore,
       loadingMore,
-      fetchSubmissions: updateFiltersAndFetch, // Expose filter and initial fetch as fetchSubmissions
+      fetchSubmissions: updateFiltersAndFetch, 
       loadMoreHomeSubmissions,
       updateSubmissionCommentCount,
       likedSubmissions,
-      setLikedSubmissions, // For specific cases where direct manipulation is needed
+      setLikedSubmissions, 
       handleLikeInContext,
     }),
     [

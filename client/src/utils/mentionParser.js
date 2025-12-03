@@ -7,10 +7,8 @@ export const parseMentions = (text, mentions) => {
     return text;
   }
 
-  // Sort mentions by length descending to match longer names first
   const sortedMentions = [...mentions].sort((a, b) => b.text.length - a.text.length);
 
-  // Create a regex pattern from all mention texts
   const pattern = sortedMentions.map(m => m.text.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')).join('|');
   const regex = new RegExp(`(${pattern})`, 'g');
 
@@ -24,7 +22,7 @@ export const parseMentions = (text, mentions) => {
           key={`${mention.userId}-${index}`}
           to={`/profile/${mention.userId}`}
           style={{ color: '#3B82F6', fontWeight: 'bold', textDecoration: 'none' }}
-          onClick={(e) => e.stopPropagation()} // Stop card click event
+          onClick={(e) => e.stopPropagation()} 
         >
           {part}
         </Link>

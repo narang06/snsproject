@@ -201,7 +201,8 @@ router.post(
 // 특정 사용자의 제출물 조회 (페이지네이션)
 router.get("/:userId/submissions", authMiddleware, async (req, res) => {
   try {
-    const { userId } = req.params;
+    const { userId } = req.params;             
+    const viewerId = req.user.userId;           
     const page = parseInt(req.query.page || "1", 10);
     const limit = parseInt(req.query.limit || "9", 10);
     const offset = (page - 1) * limit;
@@ -212,25 +213,36 @@ router.get("/:userId/submissions", authMiddleware, async (req, res) => {
       [userId],
     );
 
-    // 2. 페이지에 해당하는 제출물 조회
+    // 2. 페이지에 해당하는 제출물 조회 
     const [submissions] = await db.query(
-      `SELECT s.id, s.daily_quest_id, s.user_id, s.content_text as content, s.content_image_url as image_url, s.created_at,
-              u.nickname, u.nickname_tag, u.profile_image_url as userProfileImage,
-              q.title as questTitle,
-              COUNT(DISTINCT l.user_id) as likeCount,
-              COUNT(DISTINCT c.id) as commentCount
+      `SELECT 
+          s.id, 
+          s.daily_quest_id, 
+          s.user_id, 
+          s.content_text as content, 
+          s.content_image_url as image_url, 
+          s.created_at,
+          u.nickname, 
+          u.nickname_tag, 
+          u.profile_image_url as userProfileImage,
+          q.title as questTitle,
+          COUNT(DISTINCT l_all.user_id) as likeCount,
+          COUNT(DISTINCT c.id) as commentCount,
+          MAX(CASE WHEN l_me.user_id IS NOT NULL THEN 1 ELSE 0 END) AS isLiked   
       FROM submissions s
       JOIN users u ON s.user_id = u.id
       JOIN daily_quests dq ON s.daily_quest_id = dq.id
       JOIN quests q ON dq.quest_id = q.id
-      LEFT JOIN likes l ON s.id = l.submission_id
+      LEFT JOIN likes l_all ON s.id = l_all.submission_id                        
+      LEFT JOIN likes l_me 
+        ON s.id = l_me.submission_id AND l_me.user_id = ?                        
       LEFT JOIN comments c ON s.id = c.submission_id
       WHERE s.user_id = ?
       GROUP BY s.id
       ORDER BY s.created_at DESC
       LIMIT ?
       OFFSET ?`,
-      [userId, limit, offset],
+      [viewerId, userId, limit, offset],                                           
     );
 
     const submissionsWithMentions = await addResolvedMentions(submissions);
@@ -244,5 +256,6 @@ router.get("/:userId/submissions", authMiddleware, async (req, res) => {
     res.status(500).json({ message: "서버 오류" });
   }
 });
+
 
 export default router;

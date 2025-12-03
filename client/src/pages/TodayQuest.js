@@ -32,11 +32,12 @@ import { useSubmissions } from "../contexts/SubmissionsContext";
 const TodayQuest = ({ currentUser }) => {
   const {
     submissions: contextSubmissions,
-    setSubmissions,
     likedSubmissions,
+    setLikedSubmissions,
     handleLikeInContext,
     updateSubmissionCommentCount,
   } = useSubmissions();
+
   const [localSubmissions, setLocalSubmissions] = useState([]);
   const [quest, setQuest] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -142,8 +143,25 @@ const TodayQuest = ({ currentUser }) => {
       if (response.ok) {
         if (page === 1) {
           setLocalSubmissions(data.submissions);
+          const newLiked = new Set();
+          data.submissions.forEach(s => {
+            if (s.isLiked === 1) {
+              newLiked.add(s.id);
+            }
+          });
+          setLikedSubmissions(newLiked);
         } else {
           setLocalSubmissions((prev) => [...prev, ...data.submissions]);
+
+          setLikedSubmissions((prev) => {
+            const merged = new Set(prev);
+            data.submissions.forEach(s => {
+              if (s.isLiked === 1) {
+                merged.add(s.id);
+              }
+            });
+            return merged;
+          });
         }
         setHasMore(data.hasMore);
       }
@@ -152,7 +170,7 @@ const TodayQuest = ({ currentUser }) => {
     } finally {
       setLoadingMore(false);
     }
-  }, [page]);
+  }, [page, setLocalSubmissions, setLikedSubmissions]);
 
   useEffect(() => {
     fetchQuestDetails();
@@ -240,9 +258,19 @@ const TodayQuest = ({ currentUser }) => {
         );
         setComments(updatedComments);
         setNewComment("");
+
+        
         commentsEndRef.current?.scrollIntoView({ behavior: "smooth" });
 
-        updateSubmissionCommentCount(selectedSubmission.id, 1); // 댓글 수 1 증가
+        updateSubmissionCommentCount(selectedSubmission.id, 1); 
+
+        setLocalSubmissions((prev) =>
+          prev.map((s) =>
+            s.id === selectedSubmission.id
+              ? { ...s, commentCount: s.commentCount + 1 }
+              : s
+          )
+        );
 
         const postAuthorId = selectedSubmission.user_id;
         if (data.user_id === postAuthorId) {
@@ -259,7 +287,54 @@ const TodayQuest = ({ currentUser }) => {
     }
   };
 
-  const handleLike = handleLikeInContext;
+  const handleLocalLike = useCallback(
+    async (submission) => {
+      try {
+        const token = localStorage.getItem("token");
+        const isLiked = likedSubmissions.has(submission.id);
+
+        const response = await fetch("http://localhost:3010/likes", {
+          method: isLiked ? "DELETE" : "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ submissionId: submission.id }),
+        });
+
+        if (response.ok) {
+          const resultData = await response.json();
+          const newLiked = new Set(likedSubmissions);
+          if (isLiked) {
+            newLiked.delete(submission.id);
+          } else {
+            newLiked.add(submission.id);
+          }
+          setLikedSubmissions(newLiked);
+
+          setLocalSubmissions((prevSubmissions) =>
+            prevSubmissions.map((s) =>
+              s.id === submission.id
+                ? {
+                    ...s,
+                    likeCount: isLiked ? s.likeCount - 1 : s.likeCount + 1,
+                    isLiked:
+                      resultData.isLiked !== undefined
+                        ? resultData.isLiked
+                        : !isLiked,
+                  }
+                : s,
+            ),
+          );
+        }
+      } catch (err) {
+        console.error("좋아요 실패:", err);
+      }
+    },
+    [localSubmissions, likedSubmissions, setLikedSubmissions],
+  );
+
+  const handleLike = handleLocalLike;
 
   const handleOpenImageModal = (imageUrl) => {
     setSelectedImageForModal(imageUrl);
@@ -287,6 +362,14 @@ const TodayQuest = ({ currentUser }) => {
       }
       setComments(comments.filter((comment) => comment.id !== commentId));
       updateSubmissionCommentCount(selectedSubmission.id, -1);
+
+      setLocalSubmissions((prev) =>
+        prev.map((s) =>
+          s.id === selectedSubmission.id
+            ? { ...s, commentCount: s.commentCount - 1 }
+            : s
+        )
+      );
 
       if (latestAuthorComment && latestAuthorComment.id === commentId) {
         setLatestAuthorComment(null);
@@ -442,7 +525,7 @@ const TodayQuest = ({ currentUser }) => {
               submission={submission}
               handleOpenModal={handleOpenModal}
               handleOpenImageModal={handleOpenImageModal}
-              handleLike={handleLikeInContext}
+              handleLike={handleLike}
               likedSubmissions={likedSubmissions}
               currentUserId={currentUser?.userId}
             />

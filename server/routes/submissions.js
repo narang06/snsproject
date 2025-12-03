@@ -120,8 +120,10 @@ router.get("/quest/:dailyQuestId", authMiddleware, async (req, res) => {
   try {
     const { dailyQuestId } = req.params;
 
-    const [submissions] = await db.query(
-      `SELECT
+    const queryParams = [req.user.userId, req.user.userId, dailyQuestId];
+
+    const sqlQuery = `
+      SELECT
         s.id, s.daily_quest_id, s.user_id, s.content_text as content, s.content_image_url as image_url, s.created_at,
         u.nickname, u.nickname_tag, u.profile_image_url as userProfileImage,
         q.title as questTitle,
@@ -137,10 +139,10 @@ router.get("/quest/:dailyQuestId", authMiddleware, async (req, res) => {
        LEFT JOIN likes l_user ON s.id = l_user.submission_id AND l_user.user_id = ?
        WHERE s.daily_quest_id = ?
        GROUP BY s.id
-       ORDER BY s.created_at DESC`,
-      [req.user.userId, dailyQuestId],
-    );
-
+       ORDER BY s.created_at DESC`;
+    
+    const [submissions] = await db.query(sqlQuery, queryParams);
+    
     const submissionsWithMentions = await addResolvedMentions(submissions);
     res.status(200).json(submissionsWithMentions);
   } catch (err) {

@@ -90,9 +90,10 @@ router.get("/today", authMiddleware, async (req, res) => {
   }
 });
 
-// 오늘의 퀘스트에 대한 제출물 (페이지네이션)
+// 오늘의 퀘스트에 대한 제출물
 router.get("/today/submissions", authMiddleware, async (req, res) => {
   try {
+    const userId = req.user.userId; 
     const page = parseInt(req.query.page || "1", 10);
     const limit = parseInt(req.query.limit || "5", 10);
     const offset = (page - 1) * limit;
@@ -116,22 +117,32 @@ router.get("/today/submissions", authMiddleware, async (req, res) => {
       [dailyQuestId],
     );
 
-    // 3. 페이지에 해당하는 제출물 조회
+    // 3. 페이지에 해당하는 제출물 조회 (+ isLiked 계산 추가)
     const [submissions] = await db.query(
-      `SELECT s.id, s.user_id, s.content_text as content, s.content_image_url as image_url, s.created_at,
-              u.nickname, u.nickname_tag, u.profile_image_url as profile_image,
-              COUNT(DISTINCT l.user_id) as likeCount,
-              COUNT(DISTINCT c.id) as commentCount
+      `SELECT 
+          s.id,
+          s.user_id,
+          s.content_text AS content,
+          s.content_image_url AS image_url,
+          s.created_at,
+          u.nickname,
+          u.nickname_tag,
+          u.profile_image_url AS profile_image,
+          COUNT(DISTINCT l.user_id) AS likeCount,
+          COUNT(DISTINCT c.id) AS commentCount,
+          MAX(CASE WHEN l_user.user_id IS NOT NULL THEN 1 ELSE 0 END) AS isLiked  
        FROM submissions s
        JOIN users u ON s.user_id = u.id
        LEFT JOIN likes l ON s.id = l.submission_id
        LEFT JOIN comments c ON s.id = c.submission_id
+       LEFT JOIN likes l_user 
+         ON s.id = l_user.submission_id AND l_user.user_id = ?              
        WHERE s.daily_quest_id = ?
        GROUP BY s.id
        ORDER BY s.created_at DESC
        LIMIT ?
        OFFSET ?`,
-      [dailyQuestId, limit, offset],
+      [userId, dailyQuestId, limit, offset],                                 
     );
 
     // 멘션 처리
@@ -150,6 +161,7 @@ router.get("/today/submissions", authMiddleware, async (req, res) => {
     res.status(500).json({ message: "서버 오류" });
   }
 });
+
 
 // 지난 퀘스트 아카이브 (페이지네이션)
 router.get("/archive", authMiddleware, async (req, res) => {
