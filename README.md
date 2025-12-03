@@ -1,5 +1,17 @@
 # Questly - 데일리 소셜 챌린지 SNS
 
+## 목차
+
+- [프로젝트 소개](#프로젝트-소개)
+- [주요 기능](#주요-기능)
+- [기술 스택](#기술-스택)
+- [데이터베이스 ERD](#데이터베이스-erd)
+- [화면 시연](#화면-시연)
+- [설치 및 실행 방법](#설치-및-실행-방법)
+- [개발자 정보](#개발자-정보)
+
+---
+
 ## 프로젝트 소개
 **Questly**는 일상 속 소소한 챌린지를 통해 동기 부여를 얻고,  
 같은 목표를 가진 사람들과 소통하며 함께 성장하는 데 중점을 둔 소셜 네트워킹 서비스입니다.
@@ -7,6 +19,8 @@
 - 매일 하나의 공통 퀘스트가 주어지고,
 - 사용자는 인증 사진과 글을 업로드해 참여하며,
 - 팔로우, 좋아요, 댓글, 멘션, 알림을 통해 서로 소통할 수 있습니다.
+
+---
 
 ## 주요 기능
 
@@ -97,58 +111,84 @@
 - `notifications`  
   - 팔로우, 좋아요, 댓글, 멘션 등 이벤트를 기반으로 생성되는 알림
 
+```mermaid
+erDiagram
+    USERS {
+        bigint id PK
+        varchar nickname
+        varchar nickname_tag
+    }
 
-## 설치 및 실행 방법
+    QUESTS {
+        int id PK
+        varchar title
+    }
 
-### 사전 준비
-*   Node.js (LTS 버전 권장)
-*   MySQL 데이터베이스 서버
+    DAILY_QUESTS {
+        int id PK
+        int quest_id FK
+        date date
+    }
 
-### 1. 데이터베이스 설정
-1.  MySQL 서버를 실행합니다.
-2.  데이터베이스를 생성합니다. (예: `CREATE DATABASE questly_db;`)
-3.  `snsproject/server/db.js` 파일을 확인하여 데이터베이스 연결 정보가 올바른지 확인합니다.
-    *   `host`, `user`, `password`, `database` 정보가 필요합니다.
-4.  필요한 테이블 스키마를 생성합니다. (스키마 파일이 있다면 해당 스크립트를 실행합니다.)
+    SUBMISSIONS {
+        bigint id PK
+        bigint user_id FK
+        int daily_quest_id FK
+    }
 
-### 2. 서버 설정 및 실행
-1.  `snsproject/server` 디렉토리로 이동합니다.
-    ```bash
-    cd snsproject/server
-    ```
-2.  의존성 패키지를 설치합니다.
-    ```bash
-    npm install
-    ```
-3.  `.env` 파일을 생성하고 다음 환경 변수를 설정합니다. (예시)
-    ```
-    PORT='3010'
-    DB_HOST='localhost'
-    DB_USER='root'
-    DB_PASSWORD='your_mysql_password'
-    DB_NAME='questly_db'
-    JWT_SECRET='your-secret-key-for-jwt-token'
-    ```
-4.  서버를 실행합니다.
-    ```bash
-    npm start
-    # 또는 개발 모드: npm run dev
-    ```
+    COMMENTS {
+        bigint id PK
+        bigint submission_id FK
+        bigint user_id FK
+    }
 
-### 3. 클라이언트 설정 및 실행
-1.  `snsproject/client` 디렉토리로 이동합니다.
-    ```bash
-    cd snsproject/client
-    ```
-2.  의존성 패키지를 설치합니다.
-    ```bash
-    npm install
-    ```
-3.  클라이언트 애플리케이션을 실행합니다.
-    ```bash
-    npm start
-    ```
-4.  웹 브라우저에서 `http://localhost:3000` (기본값)으로 접속합니다.
+    LIKES {
+        bigint submission_id FK
+        bigint user_id FK
+    }
 
-## 개발자 정보
-[여기에 개발자 정보를 작성해주세요. 예: "홍길동 (gildong.hong@example.com)"]
+    FOLLOWS {
+        bigint follower_id FK
+        bigint following_id FK
+    }
+
+    NOTIFICATIONS {
+        bigint id PK
+        bigint recipient_id FK
+        bigint sender_id FK
+        varchar type
+    }
+
+    USERS ||--o{ SUBMISSIONS : "writes"
+    USERS ||--o{ COMMENTS : "writes"
+    USERS ||--o{ LIKES : "likes"
+    USERS ||--o{ FOLLOWS : "follows"
+    USERS ||--o{ NOTIFICATIONS : "receives"
+
+    QUESTS ||--o{ DAILY_QUESTS : "daily-for"
+    DAILY_QUESTS ||--o{ SUBMISSIONS : "has"
+
+    SUBMISSIONS ||--o{ COMMENTS : "has"
+    SUBMISSIONS ||--o{ LIKES : "has"
+    SUBMISSIONS ||--o{ NOTIFICATIONS : "target"
+
+    COMMENTS ||--o{ NOTIFICATIONS : "comment-target"
+
+```
+
+---
+화면 시연
+
+
+![오늘의 퀘스트 화면](./docs/screenshots/TodayQuest1.PNG)
+
+![퀘스트 제출 화면](./docs/screenshots/SubmitQuest1.PNG)
+
+![홈 화면1](./docs/screenshots/Home1.PNG)
+
+![홈 화면2](./docs/screenshots/Home2.PNG)
+
+![프로필 화면](./docs/screenshots/Profile1.PNG)
+
+![알림 화면](./docs/screenshots/Notifications1.PNG)
+
