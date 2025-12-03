@@ -102,12 +102,12 @@
     ```
 3.  `.env` 파일을 생성하고 다음 환경 변수를 설정합니다. (예시)
     ```
-    PORT=3010
-    DB_HOST=localhost
-    DB_USER=root
-    DB_PASSWORD=your_mysql_password
-    DB_NAME=questly_db
-    JWT_SECRET=your-secret-key-for-jwt-token
+    PORT='3010'
+    DB_HOST='localhost'
+    DB_USER='root'
+    DB_PASSWORD='your_mysql_password'
+    DB_NAME='questly_db'
+    JWT_SECRET='your-secret-key-for-jwt-token'
     ```
 4.  서버를 실행합니다.
     ```bash
