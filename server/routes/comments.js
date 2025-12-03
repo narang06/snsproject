@@ -162,16 +162,16 @@ router.post("/", authMiddleware, async (req, res) => {
     }
 
     // 3. 수집된 수신자들에게 알림 발송
-    const ONE_MINUTE_AGO = new Date(Date.now() - 60 * 1000); 
+    const THREE_MINUTES_AGO = new Date(Date.now() - 3 * 60 * 1000); 
 
     for (const [recipientId, notificationType] of recipients.entries()) {
-    // 멘션 알림은 그룹화하지 않고 개별로 보냅니다. (1분 내 중복 방지)
+    // 멘션 알림은 그룹화하지 않고 개별로 보냅니다. (3분 내 중복 방지)
     if (notificationType === "mention") {
-      const ONE_MINUTE_AGO_MENTION = new Date(Date.now() - 60 * 1000); // 새로운 변수명으로 충돌 방지
+      const THREE_MINUTES_AGO_MENTION = new Date(Date.now() - 3 * 60 * 1000); // 새로운 변수명으로 충돌 방지
       const [existingMentionNotification] = await db.query(
         `SELECT id FROM notifications
         WHERE recipient_id = ? AND sender_id = ? AND type = 'mention' AND target_id = ? AND comment_id = ? AND created_at >= ?`,
-        [recipientId, userId, submissionId, commentId, ONE_MINUTE_AGO_MENTION]
+        [recipientId, userId, submissionId, commentId, THREE_MINUTES_AGO_MENTION]
       );
 
       if (existingMentionNotification.length === 0) { 

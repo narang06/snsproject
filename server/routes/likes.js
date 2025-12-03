@@ -33,14 +33,14 @@ router.post("/", authMiddleware, async (req, res) => {
     if (submissions.length > 0 && submissions[0].user_id !== userId) {
       const recipientId = submissions[0].user_id;
       const groupingKey = `like-submission-${submissionId}`; 
-      const ONE_MINUTE_AGO = new Date(Date.now() - 60 * 1000); 
+      const THREE_MINUTES_AGO = new Date(Date.now() - 3 * 60 * 1000); 
 
-      // 1. 지난 1분 이내에 동일한 그룹화 키를 가진 알림이 있는지 찾기
+      // 1. 지난 3분 이내에 동일한 그룹화 키를 가진 알림이 있는지 찾기
       const [existingGroupNotifications] = await db.query(
         `SELECT id, actors, created_at FROM notifications
         WHERE recipient_id = ? AND grouping_key = ? AND type = 'like_group' AND created_at >= ?
         ORDER BY created_at DESC LIMIT 1`,
-        [recipientId, groupingKey, ONE_MINUTE_AGO]
+        [recipientId, groupingKey, THREE_MINUTES_AGO]
       );
 
       // 2. 알림 메시지를 생성할 sender (닉네임) 정보 가져오기
@@ -127,11 +127,12 @@ router.delete("/", authMiddleware, async (req, res) => {
       if (submissionAuthor.length > 0) {
         const recipientId = submissionAuthor[0].user_id;
         const groupingKey = `like-submission-${submissionId}`;
+        const THREE_MINUTES_AGO = new Date(Date.now() - 3 * 60 * 1000); 
 
         // 1. 취소하려는 '좋아요'와 관련된 그룹 알림 찾기
         const [groupNotifications] = await db.query(
-          `SELECT id, actors FROM notifications WHERE recipient_id = ? AND grouping_key = ? AND type = 'like_group' LIMIT 1`,
-          [recipientId, groupingKey]
+          `SELECT id, actors FROM notifications WHERE recipient_id = ? AND grouping_key = ? AND type = 'like_group' AND created_at >= ? LIMIT 1`,
+          [recipientId, groupingKey, THREE_MINUTES_AGO]
         );
 
         if (groupNotifications.length > 0) {
