@@ -72,7 +72,7 @@ const Join = () => {
         formData.append("profileImage", profileImageFile);
       }
 
-      const response = await fetch("http://localhost:3010/auth/join", {
+      const response = await fetch(`${process.env.REACT_APP_ADDR}/auth/join`, {
         method: "POST",
         body: formData, 
       })

@@ -27,7 +27,7 @@ const SubmitQuest = ({ currentUser, setNavValue }) => {
   const fetchTodayQuestInfo = async () => {
     try {
       const token = localStorage.getItem("token")
-      const response = await fetch("http://localhost:3010/quests/today", {
+      const response = await fetch(`${process.env.REACT_APP_ADDR}/quests/today`, {
         headers: { Authorization: `Bearer ${token}` },
       })
 
@@ -97,7 +97,7 @@ const SubmitQuest = ({ currentUser, setNavValue }) => {
       }
 
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:3010/submissions", {
+      const response = await fetch(`${process.env.REACT_APP_ADDR}/submissions`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: formData,

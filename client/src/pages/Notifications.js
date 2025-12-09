@@ -117,7 +117,7 @@ const Notifications = ({ currentUser, onUpdateUnreadCount }) => {
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `http://localhost:3010/notifications?page=${page}&limit=20`,
+        `${process.env.REACT_APP_ADDR}/notifications?page=${page}&limit=20`,
         {
           headers: { Authorization: `Bearer ${token}` },
         },
@@ -147,7 +147,7 @@ const Notifications = ({ currentUser, onUpdateUnreadCount }) => {
     const recordEntryTimeAndFetch = async () => {
       try {
         const token = localStorage.getItem("token");
-        await fetch("http://localhost:3010/notifications/start-read-timers", {
+        await fetch(`${process.env.REACT_APP_ADDR}/notifications/start-read-timers`, {
           method: "PATCH",
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -177,7 +177,7 @@ const Notifications = ({ currentUser, onUpdateUnreadCount }) => {
       const token = localStorage.getItem("token");
       await Promise.all(
         idsToMark.map((id) =>
-          fetch(`http://localhost:3010/notifications/${id}`, {
+          fetch(`${process.env.REACT_APP_ADDR}/notifications/${id}`, {
             method: "PATCH",
             headers: { Authorization: `Bearer ${token}` },
           }),

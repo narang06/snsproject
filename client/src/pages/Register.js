@@ -37,7 +37,7 @@ const Register = () => {
       }
 
       const token = localStorage.getItem("token")
-      const response = await fetch("http://localhost:3010/users/profile", {
+      const response = await fetch(`${process.env.REACT_APP_ADDR}/users/profile`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: formData,

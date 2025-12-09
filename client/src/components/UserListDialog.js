@@ -47,7 +47,7 @@ const UserListDialog = ({ open, onClose, title, users }) => {
                 sx={{ textDecoration: 'none', color: 'inherit' }}
               >
                 <ListItemAvatar>
-                  <Avatar src={`http://localhost:3010${user.profile_image_url}`} />
+                  <Avatar src={`${process.env.REACT_APP_ADDR}${user.profile_image_url}`} />
                 </ListItemAvatar>
                 <ListItemText
                   primary={

@@ -42,7 +42,7 @@ const Archive = ({ currentUser }) => {
   const fetchArchivedQuests = async () => {
     try {
       const token = localStorage.getItem("token")
-      const response = await fetch("http://localhost:3010/quests/archive", {
+      const response = await fetch(`${process.env.REACT_APP_ADDR}/quests/archive`, {
         headers: { Authorization: `Bearer ${token}` },
       })
 
@@ -62,7 +62,7 @@ const Archive = ({ currentUser }) => {
 
     try {
       const token = localStorage.getItem("token")
-      const response = await fetch(`http://localhost:3010/submissions/quest/${questId}`, {
+      const response = await fetch(`${process.env.REACT_APP_ADDR}/submissions/quest/${questId}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
 
@@ -81,7 +81,7 @@ const Archive = ({ currentUser }) => {
 
     try {
       const token = localStorage.getItem("token")
-      const response = await fetch(`http://localhost:3010/comments/submission/${submission.id}`, {
+      const response = await fetch(`${process.env.REACT_APP_ADDR}/comments/submission/${submission.id}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
 
@@ -106,7 +106,7 @@ const Archive = ({ currentUser }) => {
 
     try {
       const token = localStorage.getItem("token")
-      const response = await fetch("http://localhost:3010/comments", {
+      const response = await fetch(`${process.env.REACT_APP_ADDR}/comments`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -133,7 +133,7 @@ const Archive = ({ currentUser }) => {
       const token = localStorage.getItem("token")
       const isLiked = likedSubmissions.has(submission.id)
 
-      const response = await fetch("http://localhost:3010/likes", {
+      const response = await fetch(`${process.env.REACT_APP_ADDR}/likes`, {
         method: isLiked ? "DELETE" : "POST",
         headers: {
           "Content-Type": "application/json",

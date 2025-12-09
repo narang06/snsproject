@@ -113,7 +113,7 @@ const TodayQuest = ({ currentUser }) => {
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:3010/quests/today", {
+      const response = await fetch(`${process.env.REACT_APP_ADDR}/quests/today`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json();
@@ -134,7 +134,7 @@ const TodayQuest = ({ currentUser }) => {
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `http://localhost:3010/quests/today/submissions?page=${page}&limit=5`,
+        `${process.env.REACT_APP_ADDR}/quests/today/submissions?page=${page}&limit=5`,
         {
           headers: { Authorization: `Bearer ${token}` },
         },
@@ -190,7 +190,7 @@ const TodayQuest = ({ currentUser }) => {
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `http://localhost:3010/comments/submission/${submission.id}`,
+        `${process.env.REACT_APP_ADDR}/comments/submission/${submission.id}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         },
@@ -239,7 +239,7 @@ const TodayQuest = ({ currentUser }) => {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:3010/comments", {
+      const response = await fetch(`${process.env.REACT_APP_ADDR}/comments`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -293,7 +293,7 @@ const TodayQuest = ({ currentUser }) => {
         const token = localStorage.getItem("token");
         const isLiked = likedSubmissions.has(submission.id);
 
-        const response = await fetch("http://localhost:3010/likes", {
+        const response = await fetch(`${process.env.REACT_APP_ADDR}/likes`, {
           method: isLiked ? "DELETE" : "POST",
           headers: {
             "Content-Type": "application/json",
@@ -348,7 +348,7 @@ const TodayQuest = ({ currentUser }) => {
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `http://localhost:3010/comments/${commentId}`,
+        `${process.env.REACT_APP_ADDR}/comments/${commentId}`,
         {
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },
@@ -403,7 +403,7 @@ const TodayQuest = ({ currentUser }) => {
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `http://localhost:3010/comments/${commentId}`,
+        `${process.env.REACT_APP_ADDR}/comments/${commentId}`,
         {
           method: "PUT",
           headers: {
@@ -557,7 +557,7 @@ const TodayQuest = ({ currentUser }) => {
           <>
             <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <Avatar
-                src={`http://localhost:3010${selectedSubmission.userProfileImage}`}
+                src={`${process.env.REACT_APP_ADDR}${selectedSubmission.userProfileImage}`}
                 sx={{ width: 30, height: 30 }}
               />
               <Box>
@@ -575,7 +575,7 @@ const TodayQuest = ({ currentUser }) => {
               {selectedSubmission.imageUrl && (
                 <Box
                   component="img"
-                  src={`http://localhost:3010${selectedSubmission.imageUrl}`}
+                  src={`${process.env.REACT_APP_ADDR}${selectedSubmission.imageUrl}`}
                   alt="제출물"
                   onError={(e) => {
                     e.target.src =
@@ -696,7 +696,7 @@ const TodayQuest = ({ currentUser }) => {
                           }}
                         >
                           <Link to={`/profile/${comment.user_id}`} onClick={handleCloseModal} style={{ marginRight: 8 }}>
-                            <Avatar src={`http://localhost:3010${comment.profile_image_url}`} sx={{ width: 30, height: 30 }} />
+                            <Avatar src={`${process.env.REACT_APP_ADDR}${comment.profile_image_url}`} sx={{ width: 30, height: 30 }} />
                           </Link>
 
                           <Box sx={{ flexGrow: 1 }}>

@@ -21,6 +21,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { parseMentions } from "../utils/mentionParser";
 
+
 const SubmissionCard = ({
   submission,
   handleOpenModal,
@@ -75,7 +76,7 @@ const SubmissionCard = ({
       <CardHeader
         avatar={
           <Link to={`/profile/${submission.user_id}`}>
-            <Avatar src={`http://localhost:3010${submission.userProfileImage}`} alt={submission.nickname} />
+            <Avatar src={`${process.env.REACT_APP_ADDR}${submission.userProfileImage}`} alt={submission.nickname} />
           </Link>
         }
         title={<Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: "#111" }}>{submission.nickname}</Typography>}
@@ -156,7 +157,7 @@ const SubmissionCard = ({
               >
                 <CardMedia
                   component="img"
-                  image={`http://localhost:3010${imgUrl}`} 
+                  image={`${process.env.REACT_APP_ADDR}${imgUrl}`} 
                   alt={`제출물 이미지 ${index + 1}`}
                   onError={(e) => { e.target.src = 'https://via.placeholder.com/300?text=Image+Not+Found'; }}
                   sx={{
@@ -165,7 +166,7 @@ const SubmissionCard = ({
                     objectFit: 'contain',
                     cursor: 'pointer',
                   }}
-                  onClick={() => handleOpenImageModal(`http://localhost:3010${imgUrl}`)} 
+                  onClick={() => handleOpenImageModal(`${process.env.REACT_APP_ADDR}${imgUrl}`)} 
                 />
               </Box>
             ))}

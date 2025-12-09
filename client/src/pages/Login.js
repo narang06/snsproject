@@ -55,10 +55,9 @@ const Login = ({ onLogin }) => {
       setError("이메일과 비밀번호를 입력해주세요.")
       return
     }
-
     setLoading(true)
     try {
-      const response = await fetch("http://localhost:3010/auth/login", {
+      const response = await fetch(`${process.env.REACT_APP_ADDR}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),

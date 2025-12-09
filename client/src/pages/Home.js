@@ -90,7 +90,7 @@ const Home = ({ currentUser }) => {
       try {
         const token = localStorage.getItem("token");
         const response = await fetch(
-          `http://localhost:3010/comments/submission/${submission.id}`,
+          `${process.env.REACT_APP_ADDR}/comments/submission/${submission.id}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           },
@@ -188,7 +188,7 @@ const Home = ({ currentUser }) => {
             const token = localStorage.getItem("token");
 
             const response = await fetch(
-              `http://localhost:3010/submissions/${openSubmissionId}`,
+              `${process.env.REACT_APP_ADDR}/submissions/${openSubmissionId}`,
               {
                 headers: { Authorization: `Bearer ${token}` },
               },
@@ -236,7 +236,7 @@ const Home = ({ currentUser }) => {
     try {
       const token = localStorage.getItem("token");
 
-      const response = await fetch("http://localhost:3010/comments", {
+      const response = await fetch(`${process.env.REACT_APP_ADDR}/comments`, {
         method: "POST",
 
         headers: {
@@ -304,7 +304,7 @@ const Home = ({ currentUser }) => {
       const token = localStorage.getItem("token");
 
       const response = await fetch(
-        `http://localhost:3010/comments/${commentId}`,
+        `${process.env.REACT_APP_ADDR}/comments/${commentId}`,
         {
           method: "DELETE",
 
@@ -362,7 +362,7 @@ const Home = ({ currentUser }) => {
       const token = localStorage.getItem("token");
 
       const response = await fetch(
-        `http://localhost:3010/comments/${commentId}`,
+        `${process.env.REACT_APP_ADDR}/comments/${commentId}`,
         {
           method: "PUT",
 
@@ -548,7 +548,7 @@ const Home = ({ currentUser }) => {
                 {selectedSubmission.imageUrl && (
                   <Box
                     component="img"
-                    src={`http://localhost:3010${selectedSubmission.imageUrl}`}
+                    src={`${process.env.REACT_APP_ADDR}${selectedSubmission.imageUrl}`}
                     alt="제출물"
                     onError={(e) => {
                       e.target.src =

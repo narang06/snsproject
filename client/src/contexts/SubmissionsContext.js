@@ -35,9 +35,10 @@ export const SubmissionsProvider = ({ children }) => {
         queryParams.append("page", newPage);
         queryParams.append("limit", 5);
 
-        const response = await fetch(
-          `http://localhost:3010/submissions/feed?${queryParams.toString()}`,
-          {
+        const url = `${process.env.REACT_APP_ADDR}/submissions/feed?${queryParams.toString()}`;
+
+
+        const response = await fetch(url, {
             headers: { Authorization: `Bearer ${token}` },
           },
         );
@@ -113,7 +114,7 @@ export const SubmissionsProvider = ({ children }) => {
         const token = localStorage.getItem("token");
         const isLiked = likedSubmissions.has(submission.id);
 
-        const response = await fetch("http://localhost:3010/likes", {
+        const response = await fetch(`${process.env.REACT_APP_ADDR}/likes`, {
           method: isLiked ? "DELETE" : "POST",
           headers: {
             "Content-Type": "application/json",

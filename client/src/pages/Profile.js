@@ -162,7 +162,7 @@ const Profile = ({ currentUser, onLogout }) => {
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `http://localhost:3010/submissions/${submissionToEdit.id}`,
+        `${process.env.REACT_APP_ADDR}/submissions/${submissionToEdit.id}`,
         {
           method: "PUT",
           headers: {
@@ -182,6 +182,19 @@ const Profile = ({ currentUser, onLogout }) => {
 
       // 5. Update UI
       setSubmissions((prevSubmissions) =>
+        prevSubmissions.map((s) =>
+          s.id === submissionToEdit.id
+            ? {
+                ...s,
+                content: updatedSubmission.content,
+                image_url: updatedSubmission.image_url,
+              }
+            : s,
+        ),
+      );
+
+      // 여기!!!!!!!!!!!!
+      setLocalSubmissions((prevSubmissions) =>
         prevSubmissions.map((s) =>
           s.id === submissionToEdit.id
             ? {
@@ -251,7 +264,7 @@ const Profile = ({ currentUser, onLogout }) => {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:3010/users/profile", {
+      const response = await fetch(`${process.env.REACT_APP_ADDR}/users/profile`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -321,7 +334,7 @@ const Profile = ({ currentUser, onLogout }) => {
       const formData = new FormData();
       formData.append("profileImage", profileImageFile);
 
-      const response = await fetch("http://localhost:3010/users/profile", {
+      const response = await fetch("${process.env.REACT_APP_ADDR}/users/profile", {
         method: "PUT",
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
@@ -353,7 +366,7 @@ const Profile = ({ currentUser, onLogout }) => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:3010/users/${userId}`, {
+      const response = await fetch(`${process.env.REACT_APP_ADDR}/users/${userId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -376,7 +389,7 @@ const Profile = ({ currentUser, onLogout }) => {
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `http://localhost:3010/users/${userId}/submissions?page=${page}&limit=9`,
+        `${process.env.REACT_APP_ADDR}/users/${userId}/submissions?page=${page}&limit=9`,
         {
           headers: { Authorization: `Bearer ${token}` },
         },
@@ -436,7 +449,7 @@ const Profile = ({ currentUser, onLogout }) => {
   const handleFollow = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:3010/follows", {
+      const response = await fetch(`${process.env.REACT_APP_ADDR}/follows`, {
         method: isFollowing ? "DELETE" : "POST",
         headers: {
           "Content-Type": "application/json",
@@ -468,7 +481,7 @@ const Profile = ({ currentUser, onLogout }) => {
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `http://localhost:3010/follows/${type}/${userId}`,
+        `${process.env.REACT_APP_ADDR}/follows/${type}/${userId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         },
@@ -500,7 +513,7 @@ const Profile = ({ currentUser, onLogout }) => {
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `http://localhost:3010/comments/submission/${submission.id}`,
+        `${process.env.REACT_APP_ADDR}/comments/submission/${submission.id}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         },
@@ -549,7 +562,7 @@ const Profile = ({ currentUser, onLogout }) => {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:3010/comments", {
+      const response = await fetch(`${process.env.REACT_APP_ADDR}/comments`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -600,7 +613,7 @@ const Profile = ({ currentUser, onLogout }) => {
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `http://localhost:3010/comments/${commentId}`,
+        `${process.env.REACT_APP_ADDR}/comments/${commentId}`,
         {
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },
@@ -655,7 +668,7 @@ const Profile = ({ currentUser, onLogout }) => {
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `http://localhost:3010/comments/${commentId}`,
+        `${process.env.REACT_APP_ADDR}/comments/${commentId}`,
         {
           method: "PUT",
           headers: {
@@ -693,7 +706,7 @@ const Profile = ({ currentUser, onLogout }) => {
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `http://localhost:3010/submissions/${submissionId}`,
+        `${process.env.REACT_APP_ADDR}/submissions/${submissionId}`,
         {
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },
@@ -723,7 +736,7 @@ const Profile = ({ currentUser, onLogout }) => {
         const token = localStorage.getItem("token");
         const isLiked = likedSubmissions.has(submission.id);
 
-        const response = await fetch("http://localhost:3010/likes", {
+        const response = await fetch(`${process.env.REACT_APP_ADDR}/likes`, {
           method: isLiked ? "DELETE" : "POST",
           headers: {
             "Content-Type": "application/json",
@@ -827,7 +840,7 @@ const Profile = ({ currentUser, onLogout }) => {
                 src={
                   profileImagePreview ||
                   (user.profileImage
-                    ? `http://localhost:3010${user.profileImage}`
+                    ? `${process.env.REACT_APP_ADDR}${user.profileImage}`
                     : "")
                 }
                 alt={user.nickname}

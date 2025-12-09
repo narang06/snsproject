@@ -9,6 +9,10 @@ import PersonIcon from "@mui/icons-material/Person"
 import NotificationsIcon from "@mui/icons-material/Notifications"
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline"
 import { jwtDecode } from 'jwt-decode';
+import SnowBackground from "./components/background/SnowBackground";
+
+
+
 
 import Login from "./pages/Login"
 import Join from "./pages/Join"
@@ -35,8 +39,28 @@ const MainLayout = ({ children, isAuthenticated, currentUser, navValue, setNavVa
   }
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", minheight: "100dvh", paddingBottom: 7}}>
-      <Box sx={{ flex: 1 }}>
+    <Box
+      sx={{
+        position: "relative",
+        display: "flex",
+        flexDirection: "column",
+        minHeight: "100dvh",
+        paddingBottom: 7,
+        background: "#f5f5f5",//"radial-gradient(circle at top, #0f172a 0, #020617 60%)",
+        overflow: "hidden",
+      }}
+    >
+      <Box
+        sx={{
+          position: "absolute",
+          inset: 0,
+          zIndex: 0,
+          pointerEvents: "none",
+        }}
+      >
+        <SnowBackground />
+      </Box>
+      <Box sx={{ flex: 1, position: "relative", zIndex: 1 }}>
         {children}
       </Box>
       <BottomNavigation
@@ -52,7 +76,13 @@ const MainLayout = ({ children, isAuthenticated, currentUser, navValue, setNavVa
             default: break;
           }
         }}
-        sx={{ position: "fixed", bottom: 0, width: "100%" }}
+        sx={{
+          position: "fixed",
+          bottom: 0,
+          width: "100%",
+          zIndex: 9999,  
+          backgroundColor: "#fff", 
+        }}
       >
         <BottomNavigationAction label="홈" icon={<HomeIcon />} />
         <BottomNavigationAction label="오늘의 퀘스트" icon={<AssignmentIcon />} />
@@ -149,7 +179,7 @@ function MainAppContent() {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:3010/notifications/unread-count", {
+      const response = await fetch(`${process.env.REACT_APP_ADDR}/notifications/unread-count`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json();
