@@ -46,7 +46,7 @@ const MainLayout = ({ children, isAuthenticated, currentUser, navValue, setNavVa
         flexDirection: "column",
         minHeight: "100dvh",
         paddingBottom: 7,
-        background: "#f5f5f5",//"radial-gradient(circle at top, #0f172a 0, #020617 60%)",
+        background: "#f5f5f5", //"radial-gradient(circle at top, #0f172a 0, #020617 60%)"
         overflow: "hidden",
       }}
     >
@@ -179,7 +179,7 @@ function MainAppContent() {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${process.env.REACT_APP_ADDR}/notifications/unread-count`, {
+      const response = await fetch("http://localhost:3010/notifications/unread-count", {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json();
