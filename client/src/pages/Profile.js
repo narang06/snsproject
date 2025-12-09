@@ -27,8 +27,10 @@ import SubmissionCard from "../components/SubmissionCard";
 import UserListDialog from "../components/UserListDialog";
 import { parseMentions } from "../utils/mentionParser";
 import { useSubmissions } from "../contexts/SubmissionsContext";
+import { Switch } from "@mui/material";
 
-const Profile = ({ currentUser, onLogout }) => {
+
+const Profile = ({ currentUser, onLogout, isBackgroundEnabled, setIsBackgroundEnabled }) => {
   const {
     submissions: contextSubmissions,
     setSubmissions,
@@ -69,6 +71,8 @@ const Profile = ({ currentUser, onLogout }) => {
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editedCommentContent, setEditedCommentContent] = useState("");
   const observerRef = useRef(null);
+  
+
 
   const handleObserver = useCallback(
     (entries) => {
@@ -122,6 +126,13 @@ const Profile = ({ currentUser, onLogout }) => {
     setEditedContent("");
     setEditingImages([]);
   };
+
+  const handleToggleBackground = () => {
+    const newValue = !isBackgroundEnabled;
+    setIsBackgroundEnabled(newValue);
+    localStorage.setItem("backgroundEnabled", JSON.stringify(newValue));
+  };
+
 
   const handleUpdateSubmission = async () => {
     if (!submissionToEdit) return;
@@ -824,7 +835,34 @@ const Profile = ({ currentUser, onLogout }) => {
 
   return (
     <Container maxWidth="sm" sx={{ paddingTop: 2 }}>
-      <Card sx={{ marginBottom: 3 }}>
+      <Card sx={{ marginBottom: 3, position: "relative" }}>
+      {isOwnProfile && (
+        <Box
+          sx={{
+            position: "absolute",
+            top: 10,
+            right: 10,
+            zIndex: 10,
+            display: "flex",
+            alignItems: "center",
+            background: "rgba(255,255,255,0.7)",
+            padding: "4px 8px",
+            borderRadius: "20px",
+            backdropFilter: "blur(4px)",
+          }}
+        >
+
+          <Typography variant="caption" sx={{ mr: 0.5 }}>
+            배경
+          </Typography>
+          
+          <Switch
+            checked={isBackgroundEnabled}
+            onChange={handleToggleBackground}
+            size="small"
+          />
+        </Box>
+      )}
         <CardContent>
           <Box sx={{ textAlign: "center", marginBottom: 2 }}>
             <Box

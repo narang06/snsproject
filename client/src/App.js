@@ -9,11 +9,6 @@ import PersonIcon from "@mui/icons-material/Person"
 import NotificationsIcon from "@mui/icons-material/Notifications"
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline"
 import { jwtDecode } from 'jwt-decode';
-import SnowBackground from "./components/background/SnowBackground";
-
-
-
-
 import Login from "./pages/Login"
 import Join from "./pages/Join"
 import Register from "./pages/Register"
@@ -24,13 +19,14 @@ import Profile from "./pages/Profile"
 import Notifications from "./pages/Notifications"
 import Archive from "./pages/Archive"
 import SubmitQuest from "./pages/SubmitQuest"
+import BackgroundManager from "./components/background/BackgroundManager";
+
 
 const ProtectedRoute = ({ children, isAuthenticated }) => {
   return isAuthenticated ? children : <Navigate to="/login" />
 }
 
-
-const MainLayout = ({ children, isAuthenticated, currentUser, navValue, setNavValue, unreadCount }) => {
+const MainLayout = ({ children, isAuthenticated, currentUser, navValue, setNavValue, unreadCount, isBackgroundEnabled, setIsBackgroundEnabled }) => {
   const navigate = useNavigate();
 
  
@@ -50,16 +46,13 @@ const MainLayout = ({ children, isAuthenticated, currentUser, navValue, setNavVa
         overflow: "hidden",
       }}
     >
-      <Box
-        sx={{
-          position: "absolute",
-          inset: 0,
-          zIndex: 0,
-          pointerEvents: "none",
-        }}
-      >
-        <SnowBackground />
-      </Box>
+      {isBackgroundEnabled && (
+        <BackgroundManager 
+          isBackgroundEnabled={isBackgroundEnabled} 
+          debugHour={3}
+        />
+      )}
+
       <Box sx={{ flex: 1, position: "relative", zIndex: 1 }}>
         {children}
       </Box>
@@ -104,7 +97,7 @@ const MainLayout = ({ children, isAuthenticated, currentUser, navValue, setNavVa
 
 
 function MainAppContent() {
-  
+  const [isBackgroundEnabled, setIsBackgroundEnabled] = useState(JSON.parse(localStorage.getItem("backgroundEnabled") ?? "true"));
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [currentUser, setCurrentUser] = useState(null)
   const [loading, setLoading] = useState(true); 
@@ -231,6 +224,8 @@ function MainAppContent() {
         navValue={navValue} 
         setNavValue={setNavValue}
         unreadCount={unreadCount}
+        isBackgroundEnabled={isBackgroundEnabled}
+        setIsBackgroundEnabled={setIsBackgroundEnabled}
       >
         <Routes>
           <Route path="/login" element={!isAuthenticated ? <Login onLogin={handleLogin} /> : <Navigate to="/" />} />
@@ -257,7 +252,12 @@ function MainAppContent() {
             path="/profile/:userId"
             element={
               <ProtectedRoute isAuthenticated={isAuthenticated}>
-                <Profile currentUser={currentUser} onLogout={handleLogout} />
+                <Profile 
+                  currentUser={currentUser}
+                  onLogout={handleLogout}
+                  isBackgroundEnabled={isBackgroundEnabled}
+                  setIsBackgroundEnabled={setIsBackgroundEnabled}
+                />
               </ProtectedRoute>
             }
           />
