@@ -5,8 +5,7 @@
 - [프로젝트 소개](#프로젝트-소개)
 - [주요 기능](#주요-기능)
 - [기술 스택](#기술-스택)
-- [데이터베이스 ERD](#데이터베이스-erd)
-- [화면 시연](#화면-시연)
+- [주요 화면](#주요-화면)
 - [설치 및 실행 방법](#설치-및-실행-방법)
 - [개발자 정보](#개발자-정보)
 
@@ -91,69 +90,27 @@
   - 정기 작업 스케줄링 (예: 퀘스트 관련 배치 작업 확장 가능)
 
 ---
+## 주요 화면
 
-## 데이터베이스 ERD
+| **사용자 인증* | **오늘의 퀘스트** |
+| :---: | :---: |
+| <img src="./docs/screenshots/Login1.PNG" width="320"> | <img src="./docs/screenshots/TodayQuest1.PNG" width="320"> |
+| *소셜 로그인 기반 통합 세션 및 프로필* | *매일 1개의 퀘스트를 랜덤으로 자동 선정* |
 
-아래는 Questly에서 사용하는 주요 테이블 간 관계를 정리한 ERD입니다.
+| **퀘스트 제출** | **홈 피드** |
+| :---: | :---: |
+| <img src="./docs/screenshots/SubmitQuest1.PNG" width="320"> | <img src="./docs/screenshots/Home1.PNG" width="320"> |
+| *오늘의 퀘스트 인증 게시물 작성* | *다른 사용자의 인증 게시물 목록 조회* |
 
-- `users`  
-  - 기본 사용자 정보 (닉네임, 이메일, 프로필, bio)
-  - `submissions`, `comments`, `likes`, `follows`, `notifications`의 중심이 되는 엔터티
-- `quests`, `daily_quests`  
-  - `quests`: 퀘스트 마스터 데이터  
-  - `daily_quests`: 특정 날짜에 어떤 퀘스트가 오늘의 퀘스트인지 매핑
-- `submissions`  
-  - 사용자가 특정 `daily_quests`에 대해 올린 인증 게시물
-- `comments`, `likes`  
-  - `submissions`에 대한 댓글 및 좋아요 정보
-- `follows`  
-  - 사용자 간 팔로우 관계 (follower / following)
-- `notifications`  
-  - 팔로우, 좋아요, 댓글, 멘션 등 이벤트를 기반으로 생성되는 알림
----
-## 화면 시연
+| **피드 인터렉션** | **프로필 관리** |
+| :---: | :---: |
+| <img src="./docs/screenshots/Home2.PNG" width="320"> | <img src="./docs/screenshots/Profile1.PNG" width="400"> |
+| *게시물 좋아요, 댓글 작성, 수정, 삭제* | *자기소개 수정, 프로필 이미지 업로드 및 수정* |
 
-<p align="center">
-  <img src="./docs/screenshots/Login1.PNG" alt="로그인 화면" width="320" />
-  <br />
-  <sub>로그인 화면</sub>
-</p>
-
-<p align="center">
-  <img src="./docs/screenshots/TodayQuest1.PNG" alt="오늘의 퀘스트 화면" width="320" />
-  <br />
-  <sub>오늘의 퀘스트 화면</sub>
-</p>
-
-<p align="center">
-  <img src="./docs/screenshots/SubmitQuest1.PNG" alt="퀘스트 제출 화면" width="320" />
-  <br />
-  <sub>퀘스트 제출 화면</sub>
-</p>
-
-<p align="center">
-  <img src="./docs/screenshots/Home1.PNG" alt="홈 화면 1" width="320" />
-  <br />
-  <sub>홈 화면 1</sub>
-</p>
-
-<p align="center">
-  <img src="./docs/screenshots/Home2.PNG" alt="홈 화면 2" width="320" />
-  <br />
-  <sub>홈 화면 2</sub>
-</p>
-
-<p align="center">
-  <img src="./docs/screenshots/Profile1.PNG" alt="프로필 화면" width="320" />
-  <br />
-  <sub>프로필 화면</sub>
-</p>
-
-<p align="center">
-  <img src="./docs/screenshots/Notifications1.PNG" alt="알림 화면" width="320" />
-  <br />
-  <sub>알림 화면</sub>
-</p>
+| **알림** | 
+| :---: |
+| <img src="./docs/screenshots/Notifications1.PNG" width="320"> | 
+| *팔로우, 좋아요, 댓글, 멘션 발생시 알림생성* | 
 
 ## 설치 및 실행 방법
 
